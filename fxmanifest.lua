@@ -21,7 +21,7 @@ client_scripts {
 }
 
 server_scripts {
-    '@mysql-async/lib/MySQL.lua', -- oxmysql will automatically override this if installed
+    '@mysql-async/lib/MySQL.lua',
     'server/server.lua',
     'frameworks/**/server.lua'
 }

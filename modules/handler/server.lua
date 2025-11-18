@@ -1,14 +1,18 @@
 local Handler = {}
-Handler.gangs = {} -- Cache of all gangs
-Handler.playerGangs = {} -- Cache of player identifier -> gang_id
+Handler.gangs = {}
+Handler.playerGangs = {}
 
--- Create database tables if they don't exist
+local function DebugPrint(...)
+    if Config.Debug then
+        print(...)
+    end
+end
+
 function Handler:CreateTables()
     if Config.Debug then
-        print('[Handler] Checking database tables...')
+        DebugPrint('[Handler] Checking database tables...')
     end
     
-    -- Main gangs table
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `trase_gangs` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -27,7 +31,6 @@ function Handler:CreateTables()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
     
-    -- Gang members table
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `trase_gang_members` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -43,7 +46,6 @@ function Handler:CreateTables()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
     
-    -- Gang ranks table
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `trase_gang_ranks` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -58,7 +60,6 @@ function Handler:CreateTables()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
     
-    -- Gang member stats table
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `trase_gang_member_stats` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -76,7 +77,6 @@ function Handler:CreateTables()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
     
-    -- Gang statistics table
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `trase_gang_stats` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -93,7 +93,6 @@ function Handler:CreateTables()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
     
-    -- Audit log table
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `trase_gang_audit_log` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -109,7 +108,6 @@ function Handler:CreateTables()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
     
-    -- Gang unlocks table
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `trase_gang_unlocks` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -123,7 +121,6 @@ function Handler:CreateTables()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
     
-    -- Gang invites table
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `trase_gang_invites` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -140,36 +137,33 @@ function Handler:CreateTables()
     ]])
     
     if Config.Debug then
-        print('[Handler] Database tables verified/created')
+        DebugPrint('[Handler] Database tables verified/created')
     end
 end
 
--- Initialize handler
 function Handler:Init()
     if Config.Debug then
-        print('[Handler] Initializing gang handler...')
+        DebugPrint('[Handler] Initializing gang handler...')
     end
     
     self:CreateTables()
     self:LoadAllGangs()
     
     if Config.Debug then
-        print('[Handler] Gang handler initialized with ' .. #self.gangs .. ' gangs')
+        DebugPrint('[Handler] Gang handler initialized with ' .. #self.gangs .. ' gangs')
     end
 end
 
--- Load all gangs from database into cache
 function Handler:LoadAllGangs()
     local gangs = MySQL.query.await('SELECT * FROM trase_gangs', {})
     
     for _, gang in ipairs(gangs) do
         self.gangs[gang.id] = gang
         
-        -- Load gang members
         local members = MySQL.query.await('SELECT * FROM trase_gang_members WHERE gang_id = ?', {gang.id})
         gang.members = {}
         for _, member in ipairs(members) do
-            print('[LoadAllGangs] Loading member:', member.identifier, 'name:', member.name, 'rank_id:', member.rank_id)
+            DebugPrint('[LoadAllGangs] Loading member:', member.identifier, 'name:', member.name, 'rank_id:', member.rank_id)
             gang.members[member.identifier] = {
                 identifier = member.identifier,
                 name = member.name,
@@ -180,7 +174,6 @@ function Handler:LoadAllGangs()
             self.playerGangs[member.identifier] = gang.id
         end
         
-        -- Load gang ranks
         local ranks = MySQL.query.await('SELECT * FROM trase_gang_ranks WHERE gang_id = ? ORDER BY grade DESC', {gang.id})
         gang.ranks = {}
         for _, rank in ipairs(ranks) do
@@ -188,7 +181,6 @@ function Handler:LoadAllGangs()
             gang.ranks[rank.grade] = rank
         end
         
-        -- Load gang stats
         local stats = MySQL.single.await('SELECT * FROM trase_gang_stats WHERE gang_id = ?', {gang.id})
         gang.stats = stats or {
             turf_wins = 0, turf_losses = 0,
@@ -198,13 +190,11 @@ function Handler:LoadAllGangs()
     end
 end
 
--- Create a new gang
 function Handler:CreateGang(data)
     if Config.Debug then
-        print('[Handler] Creating gang: ' .. data.name)
+        DebugPrint('[Handler] Creating gang: ' .. data.name)
     end
     
-    -- Check if gang name already exists
     for _, gang in pairs(self.gangs) do
         if gang.name == data.name then
             return false, 'gang_name_exists'
@@ -226,7 +216,6 @@ function Handler:CreateGang(data)
         return false, 'database_error'
     end
     
-    -- Create default ranks
     local defaultRanks = {
         { grade = 4, name = 'Boss', permissions = {
             manage_members = true, manage_ranks = true, manage_bank = true,
@@ -258,13 +247,10 @@ function Handler:CreateGang(data)
         })
     end
     
-    -- Create gang stats entry
     MySQL.insert.await('INSERT INTO trase_gang_stats (gang_id) VALUES (?)', {insertId})
     
-    -- Add owner as member with highest rank
     self:AddMember(insertId, data.owner, 4, data.owner, true)
     
-    -- Reload gangs
     self:LoadAllGangs()
     
     self:AddAuditLog(insertId, data.owner, 'gang_created', nil, 'Gang created')
@@ -272,10 +258,9 @@ function Handler:CreateGang(data)
     return true, insertId
 end
 
--- Delete a gang
 function Handler:DeleteGang(gangId, actorIdentifier)
     if Config.Debug then
-        print('[Handler] Deleting gang: ' .. gangId)
+        DebugPrint('[Handler] Deleting gang: ' .. gangId)
     end
     
     local gang = self.gangs[gangId]
@@ -285,46 +270,40 @@ function Handler:DeleteGang(gangId, actorIdentifier)
     
     MySQL.query.await('DELETE FROM trase_gangs WHERE id = ?', {gangId})
     
-    -- Clear cache
     for identifier, _ in pairs(gang.members) do
         self.playerGangs[identifier] = nil
     end
     self.gangs[gangId] = nil
     
     if Config.Debug then
-        print('[Handler] Gang deleted: ' .. gangId)
+        DebugPrint('[Handler] Gang deleted: ' .. gangId)
     end
     
     return true
 end
 
--- Add member to gang
 function Handler:AddMember(gangId, identifier, rankGrade, actorIdentifier, skipInvite)
     local gang = self.gangs[gangId]
     if not gang then
         return false, 'gang_not_found'
     end
     
-    -- Check if member already in a gang
     if self.playerGangs[identifier] then
         return false, 'already_in_gang'
     end
     
-    -- Check max members
     local memberCount = 0
     for _ in pairs(gang.members) do memberCount = memberCount + 1 end
     if memberCount >= gang.max_members then
         return false, 'max_members_reached'
     end
     
-    -- Check if rank exists
     if not gang.ranks[rankGrade] then
-        rankGrade = 0 -- Default to lowest rank
+        rankGrade = 0
     end
     
     local rankId = gang.ranks[rankGrade].id
     
-    -- Get player name if they're online
     local playerName = nil
     for _, player in ipairs(GetPlayers()) do
         local xPlayer = GetPlayerFromId(player)
@@ -339,13 +318,11 @@ function Handler:AddMember(gangId, identifier, rankGrade, actorIdentifier, skipI
         VALUES (?, ?, ?, ?)
     ]], {gangId, identifier, playerName, rankId})
     
-    -- Create member stats
     MySQL.insert.await([[
         INSERT INTO trase_gang_member_stats (gang_id, identifier)
         VALUES (?, ?)
     ]], {gangId, identifier})
     
-    -- Update cache
     gang.members[identifier] = {
         identifier = identifier,
         name = playerName,
@@ -361,21 +338,18 @@ function Handler:AddMember(gangId, identifier, rankGrade, actorIdentifier, skipI
     return true
 end
 
--- Remove member from gang
 function Handler:RemoveMember(gangId, identifier, actorIdentifier)
     local gang = self.gangs[gangId]
     if not gang then
         return false, 'gang_not_found'
     end
     
-    -- Cannot kick owner
     if gang.owner_identifier == identifier then
         return false, 'cannot_kick_owner'
     end
     
     MySQL.query.await('DELETE FROM trase_gang_members WHERE gang_id = ? AND identifier = ?', {gangId, identifier})
     
-    -- Update cache
     gang.members[identifier] = nil
     self.playerGangs[identifier] = nil
     
@@ -384,7 +358,6 @@ function Handler:RemoveMember(gangId, identifier, actorIdentifier)
     return true
 end
 
--- Promote/demote member
 function Handler:SetMemberRank(gangId, identifier, newRankGrade, actorIdentifier, forceOwnerChange)
     local gang = self.gangs[gangId]
     if not gang then
@@ -399,7 +372,6 @@ function Handler:SetMemberRank(gangId, identifier, newRankGrade, actorIdentifier
         return false, 'rank_not_found'
     end
     
-    -- Cannot change owner rank (unless forced by admin command)
     if gang.owner_identifier == identifier and not forceOwnerChange then
         return false, 'cannot_change_owner_rank'
     end
@@ -418,7 +390,6 @@ function Handler:SetMemberRank(gangId, identifier, newRankGrade, actorIdentifier
     return true
 end
 
--- Create/Update gang rank
 function Handler:SaveRank(gangId, rankData, actorIdentifier)
     local gang = self.gangs[gangId]
     if not gang then
@@ -428,21 +399,18 @@ function Handler:SaveRank(gangId, rankData, actorIdentifier)
     local permissionsJson = json.encode(rankData.permissions or {})
     
     if rankData.id then
-        -- Update existing rank
         MySQL.query.await([[
             UPDATE trase_gang_ranks SET name = ?, permissions = ? WHERE id = ? AND gang_id = ?
         ]], {rankData.name, permissionsJson, rankData.id, gangId})
         
         self:AddAuditLog(gangId, actorIdentifier, 'rank_updated', nil, 'Rank updated: ' .. rankData.name)
     else
-        -- Create new rank
         local rankCount = 0
         for _ in pairs(gang.ranks) do rankCount = rankCount + 1 end
         if rankCount >= gang.max_ranks then
             return false, 'max_ranks_reached'
         end
         
-        -- Shift all existing ranks up by 1 grade (update in descending order to avoid duplicate key errors)
         MySQL.query.await([[
             UPDATE trase_gang_ranks 
             SET grade = grade + 1 
@@ -450,7 +418,6 @@ function Handler:SaveRank(gangId, rankData, actorIdentifier)
             ORDER BY grade DESC
         ]], {gangId})
         
-        -- Insert new rank at grade 0
         local insertId = MySQL.insert.await([[
             INSERT INTO trase_gang_ranks (gang_id, name, grade, permissions)
             VALUES (?, ?, 0, ?)
@@ -458,14 +425,11 @@ function Handler:SaveRank(gangId, rankData, actorIdentifier)
         
         self:AddAuditLog(gangId, actorIdentifier, 'rank_created', nil, 'Rank created: ' .. rankData.name)
         
-        -- Store the new rank ID for return
         rankData.id = insertId
     end
     
-    -- Reload gangs to update cache
     self:LoadAllGangs()
     
-    -- Get updated gang data and calculate member count
     gang = self.gangs[gangId]
     local memberCount = 0
     if gang then
@@ -476,11 +440,10 @@ function Handler:SaveRank(gangId, rankData, actorIdentifier)
         end
     end
     
-    -- Return the rank data with proper structure for UI
     local updatedRank = {
         id = rankData.id,
         name = rankData.name,
-        grade = 0,  -- New ranks are always inserted at grade 0
+        grade = 0,
         permissions = rankData.permissions,
         memberCount = memberCount
     }
@@ -488,14 +451,12 @@ function Handler:SaveRank(gangId, rankData, actorIdentifier)
     return true, updatedRank
 end
 
--- Reorder rank (swap with another rank)
 function Handler:ReorderRank(gangId, rankId, direction, actorIdentifier)
     local gang = self.gangs[gangId]
     if not gang then
         return false, 'gang_not_found'
     end
     
-    -- Find the rank being moved
     local currentRank = nil
     for _, rank in pairs(gang.ranks) do
         if rank.id == rankId then
@@ -511,7 +472,7 @@ function Handler:ReorderRank(gangId, rankId, direction, actorIdentifier)
     local currentGrade = currentRank.grade
     local targetGrade
     
-    print('[ReorderRank] Current rank:', currentRank.name, 'grade:', currentGrade, 'direction:', direction)
+    DebugPrint('[ReorderRank] Current rank:', currentRank.name, 'grade:', currentGrade, 'direction:', direction)
     
     if direction == 'up' then
         targetGrade = currentGrade + 1
@@ -521,12 +482,11 @@ function Handler:ReorderRank(gangId, rankId, direction, actorIdentifier)
         return false, 'invalid_direction'
     end
     
-    print('[ReorderRank] Looking for target grade:', targetGrade)
+    DebugPrint('[ReorderRank] Looking for target grade:', targetGrade)
     
-    -- Check if target grade exists
     local targetRank = nil
     for _, rank in pairs(gang.ranks) do
-        print('[ReorderRank] Checking rank:', rank.name, 'grade:', rank.grade)
+        DebugPrint('[ReorderRank] Checking rank:', rank.name, 'grade:', rank.grade)
         if rank.grade == targetGrade then
             targetRank = rank
             break
@@ -534,29 +494,23 @@ function Handler:ReorderRank(gangId, rankId, direction, actorIdentifier)
     end
     
     if not targetRank then
-        print('[ReorderRank] No rank found with grade:', targetGrade)
+        DebugPrint('[ReorderRank] No rank found with grade:', targetGrade)
         return false, 'no_rank_to_swap'
     end
     
-    print('[ReorderRank] Swapping', currentRank.name, 'with', targetRank.name)
+    DebugPrint('[ReorderRank] Swapping', currentRank.name, 'with', targetRank.name)
     
-    -- Swap grades using a three-step process to avoid unique constraint violation
-    -- Step 1: Set current rank to temporary negative grade
     local tempGrade = -999
     MySQL.query.await('UPDATE trase_gang_ranks SET grade = ? WHERE id = ? AND gang_id = ?', {tempGrade, rankId, gangId})
     
-    -- Step 2: Set target rank to current rank's grade
     MySQL.query.await('UPDATE trase_gang_ranks SET grade = ? WHERE id = ? AND gang_id = ?', {currentGrade, targetRank.id, gangId})
     
-    -- Step 3: Set current rank to target grade
     MySQL.query.await('UPDATE trase_gang_ranks SET grade = ? WHERE id = ? AND gang_id = ?', {targetGrade, rankId, gangId})
     
     self:AddAuditLog(gangId, actorIdentifier, 'rank_reordered', nil, 'Rank reordered: ' .. currentRank.name)
     
-    -- Reload gangs to update cache
     self:LoadAllGangs()
     
-    -- Build updated ranks list for UI
     local updatedRanks = {}
     gang = self.gangs[gangId]
     if gang then
@@ -583,14 +537,12 @@ function Handler:ReorderRank(gangId, rankId, direction, actorIdentifier)
     return true, updatedRanks
 end
 
--- Delete gang rank
 function Handler:DeleteRank(gangId, rankId, actorIdentifier)
     local gang = self.gangs[gangId]
     if not gang then
         return false, 'gang_not_found'
     end
     
-    -- Get the grade of the rank being deleted
     local deletedGrade = nil
     for _, rank in pairs(gang.ranks) do
         if rank.id == rankId then
@@ -603,7 +555,6 @@ function Handler:DeleteRank(gangId, rankId, actorIdentifier)
         return false, 'rank_not_found'
     end
     
-    -- Find the rank with grade one below the deleted rank (to demote members to)
     local demoteToRankId = nil
     for _, rank in pairs(gang.ranks) do
         if rank.grade == deletedGrade - 1 then
@@ -612,7 +563,6 @@ function Handler:DeleteRank(gangId, rankId, actorIdentifier)
         end
     end
     
-    -- If members have this rank, demote them to the next lower rank
     if demoteToRankId then
         MySQL.query.await([[
             UPDATE trase_gang_members 
@@ -620,17 +570,14 @@ function Handler:DeleteRank(gangId, rankId, actorIdentifier)
             WHERE gang_id = ? AND rank_id = ?
         ]], {demoteToRankId, gangId, rankId})
     else
-        -- If there's no lower rank, we cannot delete this rank (it's the lowest)
         local memberCount = MySQL.scalar.await('SELECT COUNT(*) FROM trase_gang_members WHERE gang_id = ? AND rank_id = ?', {gangId, rankId})
         if memberCount and memberCount > 0 then
             return false, 'no_lower_rank'
         end
     end
     
-    -- Delete the rank
     MySQL.query.await('DELETE FROM trase_gang_ranks WHERE id = ? AND gang_id = ?', {rankId, gangId})
     
-    -- Shift all higher grades down by 1
     MySQL.query.await([[
         UPDATE trase_gang_ranks 
         SET grade = grade - 1 
@@ -639,12 +586,10 @@ function Handler:DeleteRank(gangId, rankId, actorIdentifier)
     
     self:AddAuditLog(gangId, actorIdentifier, 'rank_deleted', nil, 'Rank deleted and members adjusted')
     
-    -- Reload gangs to update cache
     self:LoadAllGangs()
     
-    -- Build updated ranks list with member counts for UI
     local updatedRanks = {}
-    gang = self.gangs[gangId] -- Get fresh data after reload
+    gang = self.gangs[gangId]
     if gang then
         for _, rank in pairs(gang.ranks) do
             local memberCount = 0
@@ -663,14 +608,12 @@ function Handler:DeleteRank(gangId, rankId, actorIdentifier)
             })
         end
         
-        -- Sort by grade descending
         table.sort(updatedRanks, function(a, b) return a.grade > b.grade end)
     end
     
     return true, updatedRanks
 end
 
--- Update gang info
 function Handler:UpdateGangInfo(gangId, data, actorIdentifier)
     local gang = self.gangs[gangId]
     if not gang then
@@ -694,7 +637,6 @@ function Handler:UpdateGangInfo(gangId, data, actorIdentifier)
     local query = string.format('UPDATE trase_gangs SET %s WHERE id = ?', table.concat(updates, ', '))
     MySQL.query.await(query, values)
     
-    -- Update cache
     for key, value in pairs(data) do
         gang[key] = value
     end
@@ -704,7 +646,6 @@ function Handler:UpdateGangInfo(gangId, data, actorIdentifier)
     return true
 end
 
--- Update gang settings (admin only)
 function Handler:UpdateGangSettings(gangId, data)
     local gang = self.gangs[gangId]
     if not gang then
@@ -738,7 +679,6 @@ function Handler:UpdateGangSettings(gangId, data)
     return true
 end
 
--- Get player's gang
 function Handler:GetPlayerGang(identifier)
     local gangId = self.playerGangs[identifier]
     if not gangId then
@@ -748,14 +688,12 @@ function Handler:GetPlayerGang(identifier)
     return self.gangs[gangId]
 end
 
--- Check if player has permission
 function Handler:HasPermission(identifier, permission)
     local gang = self:GetPlayerGang(identifier)
     if not gang then
         return false
     end
     
-    -- Owner has all permissions
     if gang.owner_identifier == identifier then
         return true
     end
@@ -765,7 +703,6 @@ function Handler:HasPermission(identifier, permission)
         return false
     end
     
-    -- Find member's rank
     local memberRank = nil
     for _, rank in pairs(gang.ranks) do
         if rank.id == member.rank_id then
@@ -781,7 +718,6 @@ function Handler:HasPermission(identifier, permission)
     return memberRank.permissions[permission] == true
 end
 
--- Add reputation to gang
 function Handler:AddReputation(gangId, amount, reason)
     local gang = self.gangs[gangId]
     if not gang then
@@ -793,13 +729,12 @@ function Handler:AddReputation(gangId, amount, reason)
     MySQL.query.await('UPDATE trase_gangs SET reputation = ? WHERE id = ?', {gang.reputation, gangId})
     
     if Config.Debug then
-        print('[Handler] Added ' .. amount .. ' reputation to gang ' .. gangId .. ' (' .. reason .. ')')
+        DebugPrint('[Handler] Added ' .. amount .. ' reputation to gang ' .. gangId .. ' (' .. reason .. ')')
     end
     
     return true
 end
 
--- Add revenue to gang
 function Handler:AddRevenue(gangId, amount)
     local gang = self.gangs[gangId]
     if not gang then
@@ -816,7 +751,6 @@ function Handler:AddRevenue(gangId, amount)
     return true
 end
 
--- Update gang stats
 function Handler:UpdateGangStats(gangId, statType, increment)
     local gang = self.gangs[gangId]
     if not gang then
@@ -837,7 +771,6 @@ function Handler:UpdateGangStats(gangId, statType, increment)
     return true
 end
 
--- Update member stats
 function Handler:UpdateMemberStats(gangId, identifier, statType, increment)
     MySQL.query.await(
         string.format('UPDATE trase_gang_member_stats SET %s = %s + ? WHERE gang_id = ? AND identifier = ?', statType, statType),
@@ -847,7 +780,6 @@ function Handler:UpdateMemberStats(gangId, identifier, statType, increment)
     return true
 end
 
--- Get member stats
 function Handler:GetMemberStats(gangId, identifier)
     local stats = MySQL.single.await([[
         SELECT * FROM trase_gang_member_stats WHERE gang_id = ? AND identifier = ?
@@ -856,7 +788,6 @@ function Handler:GetMemberStats(gangId, identifier)
     return stats
 end
 
--- Add audit log entry
 function Handler:AddAuditLog(gangId, actorIdentifier, action, targetIdentifier, details)
     MySQL.insert.await([[
         INSERT INTO trase_gang_audit_log (gang_id, actor_identifier, action, target_identifier, details)
@@ -864,7 +795,6 @@ function Handler:AddAuditLog(gangId, actorIdentifier, action, targetIdentifier, 
     ]], {gangId, actorIdentifier, action, targetIdentifier or '', details or ''})
 end
 
--- Get audit logs
 function Handler:GetAuditLogs(gangId, limit)
     limit = limit or 50
     
@@ -875,24 +805,20 @@ function Handler:GetAuditLogs(gangId, limit)
     return logs
 end
 
--- Get all gangs (for leaderboards, etc)
 function Handler:GetAllGangs()
     return self.gangs
 end
 
--- Create gang invite
 function Handler:CreateInvite(gangId, inviterIdentifier, inviteeIdentifier)
     local gang = self.gangs[gangId]
     if not gang then
         return false, 'gang_not_found'
     end
     
-    -- Check if player already in gang
     if self.playerGangs[inviteeIdentifier] then
         return false, 'already_in_gang'
     end
     
-    -- Check for existing pending invite
     local existing = MySQL.single.await([[
         SELECT id FROM trase_gang_invites 
         WHERE gang_id = ? AND invitee_identifier = ? AND status = 'pending'
@@ -914,7 +840,6 @@ function Handler:CreateInvite(gangId, inviterIdentifier, inviteeIdentifier)
     return true
 end
 
--- Accept gang invite
 function Handler:AcceptInvite(inviteId, inviteeIdentifier)
     local invite = MySQL.single.await([[
         SELECT * FROM trase_gang_invites WHERE id = ? AND invitee_identifier = ? AND status = 'pending'
@@ -924,7 +849,6 @@ function Handler:AcceptInvite(inviteId, inviteeIdentifier)
         return false, 'invite_not_found'
     end
     
-    -- Check if expired
     local expiresAt = os.time({
         year = string.sub(invite.expires_at, 1, 4),
         month = string.sub(invite.expires_at, 6, 7),
@@ -939,13 +863,11 @@ function Handler:AcceptInvite(inviteId, inviteeIdentifier)
         return false, 'invite_expired'
     end
     
-    -- Add member to gang
     local success, err = self:AddMember(invite.gang_id, inviteeIdentifier, 0, invite.inviter_identifier, true)
     if not success then
         return false, err
     end
     
-    -- Update invite status
     MySQL.query.await('UPDATE trase_gang_invites SET status = "accepted" WHERE id = ?', {inviteId})
     
     self:AddAuditLog(invite.gang_id, inviteeIdentifier, 'invite_accepted', inviteeIdentifier, 'Member accepted invite')
@@ -953,7 +875,6 @@ function Handler:AcceptInvite(inviteId, inviteeIdentifier)
     return true
 end
 
--- Decline gang invite
 function Handler:DeclineInvite(inviteId, inviteeIdentifier)
     MySQL.query.await([[
         UPDATE trase_gang_invites SET status = 'declined' 
@@ -963,7 +884,6 @@ function Handler:DeclineInvite(inviteId, inviteeIdentifier)
     return true
 end
 
--- Get player's pending invites
 function Handler:GetPlayerInvites(identifier)
     local invites = MySQL.query.await([[
         SELECT i.*, g.label as gang_label
@@ -976,13 +896,11 @@ function Handler:GetPlayerInvites(identifier)
     return invites
 end
 
--- Initialize on resource start
 CreateThread(function()
-    Wait(1000) -- Wait for database to be ready
+    Wait(1000)
     Handler:Init()
 end)
 
--- Callbacks
 lib.callback.register('trase_gangs:server:getPlayerGang', function(source)
     local xPlayer = GetPlayerFromId(source)
     if not xPlayer then return nil end
@@ -997,7 +915,6 @@ lib.callback.register('trase_gangs:server:hasPermission', function(source, permi
     return Handler:HasPermission(xPlayer.identifier, permission)
 end)
 
--- Admin callbacks
 lib.callback.register('trase_gangs:server:admin:createGang', function(source, data)
     local xPlayer = GetPlayerFromId(source)
     if not xPlayer then return false, 'player_not_found' end
@@ -1046,23 +963,22 @@ end)
 lib.callback.register('trase_gangs:server:admin:getAllGangs', function(source)
     local xPlayer = GetPlayerFromId(source)
     if not xPlayer then 
-        print('[Server] getAllGangs: xPlayer is nil for source', source)
+        DebugPrint('[Server] getAllGangs: xPlayer is nil for source', source)
         return {} 
     end
     
     if not IsAdmin(source) then
-        print('[Server] getAllGangs: Player', source, 'is not admin')
+        DebugPrint('[Server] getAllGangs: Player', source, 'is not admin')
         return {}
     end
     
-    print('[Server] getAllGangs: Admin check passed for source', source)
+    DebugPrint('[Server] getAllGangs: Admin check passed for source', source)
     
     local allGangs = Handler:GetAllGangs()
     
-    -- Count gangs properly (it's a dictionary, not array)
     local gangCount = 0
     for _ in pairs(allGangs) do gangCount = gangCount + 1 end
-    print('[Server] getAllGangs: Retrieved', gangCount, 'gangs from cache')
+    DebugPrint('[Server] getAllGangs: Retrieved', gangCount, 'gangs from cache')
     
     local formattedGangs = {}
     
@@ -1091,10 +1007,8 @@ lib.callback.register('trase_gangs:server:admin:getAllGangs', function(source)
             
             local memberPlayer = GetPlayerFromIdentifier(identifier)
             local isOnline = memberPlayer ~= nil
-            -- Use saved name from DB if available, otherwise get from player or use identifier
             local memberName = member.name or (isOnline and memberPlayer.getName()) or identifier
             
-            -- Update name in DB if player is online and name is different
             if isOnline and memberPlayer.getName() ~= member.name then
                 MySQL.query.await('UPDATE trase_gang_members SET name = ? WHERE gang_id = ? AND identifier = ?', {memberPlayer.getName(), gang.id, identifier})
                 member.name = memberPlayer.getName()
@@ -1156,37 +1070,36 @@ lib.callback.register('trase_gangs:server:admin:getAllGangs', function(source)
         })
     end
     
-    print('[Server] getAllGangs: Returning', #formattedGangs, 'formatted gangs')
+    DebugPrint('[Server] getAllGangs: Returning', #formattedGangs, 'formatted gangs')
     if #formattedGangs > 0 then
-        print('[Server] First gang:', json.encode(formattedGangs[1]))
+        DebugPrint('[Server] First gang:', json.encode(formattedGangs[1]))
     end
     
     return formattedGangs
 end)
 
 lib.callback.register('trase_gangs:server:getGangDataForUI', function(source)
-    print('[Server] getGangDataForUI called for source:', source)
+    DebugPrint('[Server] getGangDataForUI called for source:', source)
     local identifier = GetPrimaryIdentifier(source)
-    print('[Server] getGangDataForUI identifier:', identifier)
+    DebugPrint('[Server] getGangDataForUI identifier:', identifier)
     if not identifier then 
-        print('[Server] getGangDataForUI: No identifier found')
+        DebugPrint('[Server] getGangDataForUI: No identifier found')
         return nil 
     end
     
-    -- Reload gang data from database to get fresh data
     local gangId = Handler.playerGangs[identifier]
     if gangId then
-        print('[Server] getGangDataForUI: Reloading all gangs cache')
+        DebugPrint('[Server] getGangDataForUI: Reloading all gangs cache')
         Handler:LoadAllGangs()
     end
     
     local gang = Handler:GetPlayerGang(identifier)
-    print('[Server] getGangDataForUI gang:', gang and gang.name or 'nil')
+    DebugPrint('[Server] getGangDataForUI gang:', gang and gang.name or 'nil')
     if gang then
-        print('[Server] getGangDataForUI: Gang has', gang.ranks and #gang.ranks or 0, 'ranks in cache')
+        DebugPrint('[Server] getGangDataForUI: Gang has', gang.ranks and #gang.ranks or 0, 'ranks in cache')
     end
     if not gang then 
-        print('[Server] getGangDataForUI: No gang found for identifier:', identifier)
+        DebugPrint('[Server] getGangDataForUI: No gang found for identifier:', identifier)
         return nil 
     end
     
@@ -1195,7 +1108,6 @@ lib.callback.register('trase_gangs:server:getGangDataForUI', function(source)
     
     local membersList = {}
     for memberIdentifier, member in pairs(gang.members) do
-        -- Find the rank for this member
         local memberRank = nil
         for _, rank in pairs(gang.ranks) do
             if rank.id == member.rank_id then
@@ -1213,10 +1125,9 @@ lib.callback.register('trase_gangs:server:getGangDataForUI', function(source)
             end
         end
         
-        -- Use saved name from DB, or identifier as fallback
         local memberName = member.name or memberIdentifier
         
-        print('[getGangDataForUI] Member:', memberIdentifier, 'name from DB:', member.name, 'final name:', memberName)
+        DebugPrint('[getGangDataForUI] Member:', memberIdentifier, 'name from DB:', member.name, 'final name:', memberName)
         
         table.insert(membersList, {
             identifier = memberIdentifier,
@@ -1248,9 +1159,9 @@ lib.callback.register('trase_gangs:server:getGangDataForUI', function(source)
     
     table.sort(ranksList, function(a, b) return a.grade > b.grade end)
     
-    print('[getGangDataForUI] Sending', #membersList, 'members to UI')
+    DebugPrint('[getGangDataForUI] Sending', #membersList, 'members to UI')
     for i, m in ipairs(membersList) do
-        print('[getGangDataForUI] Member', i, ':', m.identifier, 'name:', m.name)
+        DebugPrint('[getGangDataForUI] Member', i, ':', m.identifier, 'name:', m.name)
     end
     
     return {
@@ -1275,12 +1186,11 @@ lib.callback.register('trase_gangs:server:getGangDataForUI', function(source)
     }
 end)
 
--- Member management callbacks
 lib.callback.register('trase_gangs:server:inviteMember', function(source, targetServerId)
     local xPlayer = GetPlayerFromId(source)
     local targetPlayer = GetPlayerFromId(targetServerId)
 
-    print('[Server] inviteMember called by source:', source, 'targetServerId:', targetServerId)
+    DebugPrint('[Server] inviteMember called by source:', source, 'targetServerId:', targetServerId)
     
     if not xPlayer or not targetPlayer then
         return false, 'player_not_found'
@@ -1359,7 +1269,6 @@ lib.callback.register('trase_gangs:server:setMemberRank', function(source, ident
     return success, err
 end)
 
--- Gang info management
 lib.callback.register('trase_gangs:server:updateGangInfo', function(source, data)
     local xPlayer = GetPlayerFromId(source)
     if not xPlayer then return false, 'player_not_found' end
@@ -1437,23 +1346,23 @@ end)
 
 lib.callback.register('trase_gangs:server:getAuditLogs', function(source, limit)
     local xPlayer = GetPlayerFromId(source)
-    print('[getAuditLogs] Player:', xPlayer and xPlayer.identifier or 'nil')
+    DebugPrint('[getAuditLogs] Player:', xPlayer and xPlayer.identifier or 'nil')
     if not xPlayer then 
-        print('[getAuditLogs] No xPlayer, returning empty')
+        DebugPrint('[getAuditLogs] No xPlayer, returning empty')
         return {} 
     end
     
     local gang = Handler:GetPlayerGang(xPlayer.identifier)
-    print('[getAuditLogs] Gang:', gang and gang.name or 'nil', 'id:', gang and gang.id or 'nil')
+    DebugPrint('[getAuditLogs] Gang:', gang and gang.name or 'nil', 'id:', gang and gang.id or 'nil')
     if not gang then 
-        print('[getAuditLogs] No gang, returning empty')
+        DebugPrint('[getAuditLogs] No gang, returning empty')
         return {} 
     end
     
     local logs = Handler:GetAuditLogs(gang.id, limit)
-    print('[getAuditLogs] Returning', logs and #logs or 0, 'logs')
+    DebugPrint('[getAuditLogs] Returning', logs and #logs or 0, 'logs')
     if logs and #logs > 0 then
-        print('[getAuditLogs] First log:', json.encode(logs[1]))
+        DebugPrint('[getAuditLogs] First log:', json.encode(logs[1]))
     end
     return logs or {}
 end)
@@ -1530,7 +1439,6 @@ lib.callback.register('trase_gangs:server:getOnlineMembers', function(source)
     return onlineMembers
 end)
 
--- Leaderboards
 lib.callback.register('trase_gangs:server:getLeaderboard', function(source, category)
     local gangs = Handler:GetAllGangs()
     local leaderboard = {}
@@ -1557,7 +1465,6 @@ lib.callback.register('trase_gangs:server:getLeaderboard', function(source, cate
         })
     end
     
-    -- Sort by wins
     table.sort(leaderboard, function(a, b)
         return a.wins > b.wins
     end)
@@ -1565,7 +1472,6 @@ lib.callback.register('trase_gangs:server:getLeaderboard', function(source, cate
     return leaderboard
 end)
 
--- Combined leaderboards callback (fetch all categories at once)
 lib.callback.register('trase_gangs:server:getLeaderboards', function(source, opts)
     local gangs = Handler:GetAllGangs()
     local maxEntries = (opts and opts.limit) or 25
@@ -1608,7 +1514,6 @@ lib.callback.register('trase_gangs:server:getLeaderboards', function(source, opt
         return out
     end
 
-    -- Reputation leaderboard
     local reputation = {}
     for gangId, gang in pairs(gangs) do
         local memberCount = 0
@@ -1635,18 +1540,15 @@ lib.callback.register('trase_gangs:server:getLeaderboards', function(source, opt
     }
 end)
 
--- Command to open leaderboards UI for any player
 RegisterCommand(Config.Commands.GangLeaderboard, function(source)
     if source == 0 then return end
     TriggerClientEvent('trase_gangs:client:openLeaderboard', source)
 end, false)
 
--- Exports
 exports('GetHandler', function()
     return Handler
 end)
 
--- Helper: get primary identifier (license preferred)
 local function GetPrimaryIdentifier(src)
     local ids = GetPlayerIdentifiers(src)
     local first
@@ -1659,7 +1561,6 @@ local function GetPrimaryIdentifier(src)
     return first
 end
 
--- When a player loads in, set their replicated state with gang info
 RegisterNetEvent('trase_gangs:server:playerReady', function()
     local src = source
     local identifier = GetPrimaryIdentifier(src)
@@ -1677,30 +1578,28 @@ RegisterCommand(Config.Commands.GangManage, function(source)
 
     local identifier = GetPrimaryIdentifier(source)
     if not identifier then 
-        print('[GangManage] Could not get identifier for source', source)
+        DebugPrint('[GangManage] Could not get identifier for source', source)
         return 
     end
 
-    print('[GangManage] Player identifier:', identifier)
+    DebugPrint('[GangManage] Player identifier:', identifier)
     
-    -- Debug: Show what's in playerGangs cache
-    print('[GangManage] playerGangs cache has', Handler.playerGangs[identifier] and 'FOUND' or 'NOT FOUND', 'for this identifier')
+    DebugPrint('[GangManage] playerGangs cache has', Handler.playerGangs[identifier] and 'FOUND' or 'NOT FOUND', 'for this identifier')
     if Handler.playerGangs[identifier] then
-        print('[GangManage] Cached gang ID:', Handler.playerGangs[identifier])
+        DebugPrint('[GangManage] Cached gang ID:', Handler.playerGangs[identifier])
     end
     
-    -- Debug: Show all cached identifiers
     local cacheCount = 0
     for cachedIdentifier, gangId in pairs(Handler.playerGangs) do
         cacheCount = cacheCount + 1
-        print('[GangManage] Cache entry:', cachedIdentifier, '-> Gang', gangId)
+        DebugPrint('[GangManage] Cache entry:', cachedIdentifier, '-> Gang', gangId)
     end
-    print('[GangManage] Total entries in playerGangs cache:', cacheCount)
+    DebugPrint('[GangManage] Total entries in playerGangs cache:', cacheCount)
     
     local gang = Handler:GetPlayerGang(identifier)
     
     if not gang then
-        print('[GangManage] Player not in a gang')
+        DebugPrint('[GangManage] Player not in a gang')
         SendNotification(source, {
             title = 'Gang Manager',
             description = 'You are not in a gang',
@@ -1709,18 +1608,16 @@ RegisterCommand(Config.Commands.GangManage, function(source)
         return
     end
 
-    print('[GangManage] Player in gang:', gang.name, 'Owner:', gang.owner_identifier)
+    DebugPrint('[GangManage] Player in gang:', gang.name, 'Owner:', gang.owner_identifier)
     
-    -- Check if owner OR has manage_members permission
     local isOwner = gang.owner_identifier == identifier
     local hasPermission = Handler:HasPermission(identifier, 'manage_members')
     
-    print('[GangManage] Is Owner:', isOwner, 'Has Permission:', hasPermission)
+    DebugPrint('[GangManage] Is Owner:', isOwner, 'Has Permission:', hasPermission)
     
     if isOwner or hasPermission then
-        print('[GangManage] Opening dashboard for player')
+        DebugPrint('[GangManage] Opening dashboard for player')
         
-        -- Prepare gang data with all members, ranks, stats, etc.
         local membersList = {}
         for memberIdentifier, member in pairs(gang.members) do
             local memberRank = nil
@@ -1788,7 +1685,7 @@ RegisterCommand(Config.Commands.GangManage, function(source)
         
         TriggerClientEvent('trase_gangs:client:openDashboard', source, dashboardData)
     else
-        print('[GangManage] Player does not have permission')
+        DebugPrint('[GangManage] Player does not have permission')
         SendNotification(source, {
             title = 'Gang Manager',
             description = 'You do not have permission to manage the gang',
@@ -1815,7 +1712,6 @@ end, false)
 RegisterCommand('setgang', function(source, args)
     if source == 0 then return end
     
-    -- Check if admin
     if not IsAdmin(source) then
         SendNotification(source, {
             title = 'Set Gang',
@@ -1825,7 +1721,6 @@ RegisterCommand('setgang', function(source, args)
         return
     end
     
-    -- Check arguments
     if #args < 3 then
         SendNotification(source, {
             title = 'Set Gang',
@@ -1848,7 +1743,6 @@ RegisterCommand('setgang', function(source, args)
         return
     end
     
-    -- Get target player
     local targetPlayer = GetPlayerFromId(targetId)
     if not targetPlayer then
         SendNotification(source, {
@@ -1869,7 +1763,6 @@ RegisterCommand('setgang', function(source, args)
         return
     end
     
-    -- Find gang by name
     local targetGang = nil
     local targetGangId = nil
     for gangId, gang in pairs(Handler.gangs) do
@@ -1889,7 +1782,6 @@ RegisterCommand('setgang', function(source, args)
         return
     end
     
-    -- Check if rank exists
     if not targetGang.ranks[rankGrade] then
         SendNotification(source, {
             title = 'Set Gang',
@@ -1899,7 +1791,6 @@ RegisterCommand('setgang', function(source, args)
         return
     end
     
-    -- Check if trying to set as owner (grade 4) but gang already has different owner
     if rankGrade == 4 and targetGang.owner_identifier ~= targetIdentifier then
         SendNotification(source, {
             title = 'Set Gang',
@@ -1909,14 +1800,11 @@ RegisterCommand('setgang', function(source, args)
         return
     end
     
-    -- Check if player is already in a gang
     if Handler.playerGangs[targetIdentifier] then
         local currentGangId = Handler.playerGangs[targetIdentifier]
         local currentGang = Handler.gangs[currentGangId]
         
-        -- If already in the same gang, just update rank
         if currentGangId == targetGangId then
-            -- If setting as owner (grade 4), update the gang's owner_identifier first
             if rankGrade == 4 then
                 MySQL.update.await('UPDATE trase_gangs SET owner_identifier = ? WHERE id = ?', {
                     targetIdentifier,
@@ -1927,10 +1815,8 @@ RegisterCommand('setgang', function(source, args)
             
             local success, result = Handler:SetMemberRank(targetGangId, targetIdentifier, rankGrade, targetIdentifier, true)
             if success then
-                -- Reload all gangs to refresh cache
                 Handler:LoadAllGangs()
                 
-                -- Update player state with fresh data
                 local ply = Player(targetId)
                 if ply and ply.state then
                     ply.state.gang = Handler:GetPlayerGang(targetIdentifier)
@@ -1951,15 +1837,12 @@ RegisterCommand('setgang', function(source, args)
             return
         end
         
-        -- Remove from current gang first
         Handler:RemoveMember(currentGangId, targetIdentifier, targetIdentifier)
     end
     
-    -- Add to new gang
     local success, result = Handler:AddMember(targetGangId, targetIdentifier, rankGrade, targetIdentifier, true)
     
     if success then
-        -- If setting as owner (grade 4), update the gang's owner_identifier
         if rankGrade == 4 then
             MySQL.update.await('UPDATE trase_gangs SET owner_identifier = ? WHERE id = ?', {
                 targetIdentifier,
@@ -1968,23 +1851,19 @@ RegisterCommand('setgang', function(source, args)
             targetGang.owner_identifier = targetIdentifier
         end
         
-        -- Reload all gangs to refresh cache
         Handler:LoadAllGangs()
         
-        -- Update player state with fresh data
         local ply = Player(targetId)
         if ply and ply.state then
             ply.state.gang = Handler:GetPlayerGang(targetIdentifier)
         end
         
-        -- Notify admin
         SendNotification(source, {
             title = 'Set Gang',
             description = 'Added ' .. GetPlayerName(targetId) .. ' to gang "' .. targetGang.label .. '" with rank grade ' .. rankGrade,
             type = 'success'
         })
         
-        -- Notify target player
         SendNotification(targetId, {
             title = 'Gang Assignment',
             description = 'You have been added to gang "' .. targetGang.label .. '"',
@@ -1999,7 +1878,6 @@ RegisterCommand('setgang', function(source, args)
     end
 end, false)
 
--- Gang War Callbacks
 
 lib.callback.register('trase_gangs:server:getGangWarData', function(source)
     local identifier = GetPrimaryIdentifier(source)
@@ -2008,7 +1886,6 @@ lib.callback.register('trase_gangs:server:getGangWarData', function(source)
     local gang = Handler:GetPlayerGang(identifier)
     if not gang then return nil end
     
-    -- Get all gangs except current gang
     local gangs = {}
     local result = MySQL.query.await('SELECT id, label as name, (SELECT COUNT(*) FROM trase_gang_members WHERE gang_id = trase_gangs.id) as memberCount FROM trase_gangs WHERE id != ?', {gang.id})
     if result then
@@ -2021,7 +1898,6 @@ lib.callback.register('trase_gangs:server:getGangWarData', function(source)
         end
     end
     
-    -- Get war history for this gang
     local history = {}
     local historyResult = MySQL.query.await([[
         SELECT 
@@ -2056,7 +1932,6 @@ lib.callback.register('trase_gangs:server:getGangWarData', function(source)
         end
     end
     
-    -- Get incoming war requests
     local requests = {}
     local requestsResult = MySQL.query.await([[
         SELECT 
@@ -2075,14 +1950,13 @@ lib.callback.register('trase_gangs:server:getGangWarData', function(source)
             table.insert(requests, {
                 id = req.id,
                 fromGang = req.fromGang,
-                killsToWin = 25, -- Default value, can be added to DB later
+                killsToWin = 25,
                 wager = req.wager_amount,
                 sentAt = req.created_at
             })
         end
     end
     
-    -- Get outgoing war requests (requests sent by this gang)
     local outgoing = {}
     local outgoingResult = MySQL.query.await([[
         SELECT 
@@ -2103,7 +1977,7 @@ lib.callback.register('trase_gangs:server:getGangWarData', function(source)
                 id = req.id,
                 toGang = req.toGang,
                 toGangId = req.target_gang_id,
-                killsToWin = 25, -- Default value, can be added to DB later
+                killsToWin = 25,
                 wager = req.wager_amount,
                 sentAt = req.created_at
             })
@@ -2125,7 +1999,6 @@ lib.callback.register('trase_gangs:server:sendGangWarInvite', function(source, d
     local gang = Handler:GetPlayerGang(identifier)
     if not gang then return false, 'not_in_gang' end
     
-    -- Check if owner or has permission
     local isOwner = gang.owner_identifier == identifier
     local hasPermission = Handler:HasPermission(identifier, 'manage_wars')
     
@@ -2136,19 +2009,16 @@ lib.callback.register('trase_gangs:server:sendGangWarInvite', function(source, d
     local targetGangId = data.gangId
     local wagerAmount = data.wager or 0
     
-    -- Check if target gang exists
     local targetGang = MySQL.query.await('SELECT id, label FROM trase_gangs WHERE id = ?', {targetGangId})
     if not targetGang or #targetGang == 0 then
         return false, 'gang_not_found'
     end
     
-    -- Check if already has pending request
     local existing = MySQL.query.await('SELECT id FROM trase_gang_war_requests WHERE challenger_gang_id = ? AND target_gang_id = ? AND status = "pending" AND expires_at > NOW()', {gang.id, targetGangId})
     if existing and #existing > 0 then
         return false, 'request_already_sent'
     end
     
-    -- Insert war request
     local requestId = MySQL.insert.await('INSERT INTO trase_gang_war_requests (challenger_gang_id, target_gang_id, wager_amount, requested_by) VALUES (?, ?, ?, ?)', {
         gang.id,
         targetGangId,
@@ -2157,7 +2027,6 @@ lib.callback.register('trase_gangs:server:sendGangWarInvite', function(source, d
     })
     
     if requestId then
-        -- Notify target gang members
         for targetIdentifier, _ in pairs(Handler.playerGangs) do
             if Handler.playerGangs[targetIdentifier] == targetGangId then
                 local targetSource = GetPlayerSourceByIdentifier(targetIdentifier)
@@ -2171,10 +2040,8 @@ lib.callback.register('trase_gangs:server:sendGangWarInvite', function(source, d
             end
         end
         
-        -- Add audit log
         Handler:AddAuditLog(gang.id, identifier, 'gang_war_sent', nil, 'Sent war request to ' .. targetGang[1].label)
         
-        -- Return success with the request data for UI
         return {
             success = true,
             request = {
@@ -2198,7 +2065,6 @@ lib.callback.register('trase_gangs:server:cancelGangWarInvite', function(source,
     local gang = Handler:GetPlayerGang(identifier)
     if not gang then return false, 'not_in_gang' end
     
-    -- Check permission
     local isOwner = gang.owner_identifier == identifier
     local hasPermission = Handler:HasPermission(identifier, 'manage_wars')
     
@@ -2208,16 +2074,13 @@ lib.callback.register('trase_gangs:server:cancelGangWarInvite', function(source,
     
     local requestId = data.requestId
     
-    -- Verify the request belongs to this gang
     local request = MySQL.query.await('SELECT target_gang_id FROM trase_gang_war_requests WHERE id = ? AND challenger_gang_id = ? AND status = "pending"', {requestId, gang.id})
     if not request or #request == 0 then
         return false, 'request_not_found'
     end
     
-    -- Delete the request
     MySQL.query.await('DELETE FROM trase_gang_war_requests WHERE id = ?', {requestId})
     
-    -- Add audit log
     Handler:AddAuditLog(gang.id, identifier, 'gang_war_cancelled', nil, 'Cancelled outgoing war request')
     
     return true, 'request_cancelled'
@@ -2230,7 +2093,6 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
     local gang = Handler:GetPlayerGang(identifier)
     if not gang then return false, 'not_in_gang' end
     
-    -- Check permission
     local isOwner = gang.owner_identifier == identifier
     local hasPermission = Handler:HasPermission(identifier, 'manage_wars')
     
@@ -2240,7 +2102,6 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
     
     local requestId = data.requestId
     
-    -- Get request details
     local request = MySQL.query.await('SELECT * FROM trase_gang_war_requests WHERE id = ? AND target_gang_id = ? AND status = "pending"', {requestId, gang.id})
     if not request or #request == 0 then
         return false, 'request_not_found'
@@ -2248,10 +2109,8 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
     
     request = request[1]
     
-    -- Update request status
     MySQL.update.await('UPDATE trase_gang_war_requests SET status = "accepted" WHERE id = ?', {requestId})
     
-    -- Create war history entry
     local warId = MySQL.insert.await('INSERT INTO trase_gang_war_history (request_id, gang_1_id, gang_2_id, wager_amount, status) VALUES (?, ?, ?, ?, "active")', {
         requestId,
         request.challenger_gang_id,
@@ -2260,7 +2119,6 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
     })
     
     if warId then
-        -- Notify both gangs
         for playerIdentifier, gangId in pairs(Handler.playerGangs) do
             if gangId == request.challenger_gang_id or gangId == gang.id then
                 local playerSource = GetPlayerSourceByIdentifier(playerIdentifier)
@@ -2274,7 +2132,6 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
             end
         end
         
-        -- Add audit logs
         Handler:AddAuditLog(gang.id, identifier, 'gang_war_accepted', nil, 'Accepted war request')
         
         return true, 'war_started'
@@ -2290,7 +2147,6 @@ lib.callback.register('trase_gangs:server:declineGangWarRequest', function(sourc
     local gang = Handler:GetPlayerGang(identifier)
     if not gang then return false, 'not_in_gang' end
     
-    -- Check permission
     local isOwner = gang.owner_identifier == identifier
     local hasPermission = Handler:HasPermission(identifier, 'manage_wars')
     
@@ -2300,16 +2156,13 @@ lib.callback.register('trase_gangs:server:declineGangWarRequest', function(sourc
     
     local requestId = data.requestId
     
-    -- Get request details
     local request = MySQL.query.await('SELECT challenger_gang_id FROM trase_gang_war_requests WHERE id = ? AND target_gang_id = ? AND status = "pending"', {requestId, gang.id})
     if not request or #request == 0 then
         return false, 'request_not_found'
     end
     
-    -- Update request status
     MySQL.update.await('UPDATE trase_gang_war_requests SET status = "declined" WHERE id = ?', {requestId})
     
-    -- Notify challenger gang
     for playerIdentifier, gangId in pairs(Handler.playerGangs) do
         if gangId == request[1].challenger_gang_id then
             local playerSource = GetPlayerSourceByIdentifier(playerIdentifier)
@@ -2323,13 +2176,11 @@ lib.callback.register('trase_gangs:server:declineGangWarRequest', function(sourc
         end
     end
     
-    -- Add audit log
     Handler:AddAuditLog(gang.id, identifier, 'gang_war_declined', nil, 'Declined war request')
     
     return true, 'request_declined'
 end)
 
--- Export Handler
 exports('GetServerHandler', function()
     return Handler
 end)
