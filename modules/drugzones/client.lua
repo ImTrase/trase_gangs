@@ -7,12 +7,12 @@ function Drugzones:constructor()
     end
     self.zones = {}
     self.activeNPCs = {}
-    self.activeDrugZone = nil -- Currently active drug zone
-    self.drugZonePoint = nil -- ox_lib point for zone detection
+    self.activeDrugZone = nil
+    self.drugZonePoint = nil
     self.isInDrugZone = false
     self.overlay = ActivityOverlay:new()
     self.currentKillstreak = 0
-    self.gangStats = {} -- Updated from server
+    self.gangStats = {}
     
     if Config.Debug then
         print('[Drugzones] Activity Overlay created:', self.overlay ~= nil)
@@ -43,7 +43,6 @@ function Drugzones:spawnNPC(zoneName, npcData)
 
     self.activeNPCs[zoneName] = ped
 
-    -- Add interaction to the NPC
     local interactionId = 'drugzone_npc_' .. zoneName
     AddInteraction(interactionId, {
         coords = vector3(npcData.coords.x, npcData.coords.y, npcData.coords.z),
@@ -67,7 +66,6 @@ function Drugzones:onNPCInteract(zoneName)
         print('[Drugzones] Player interacted with NPC in zone: ' .. zoneName)
     end
 
-    -- Check if there's already an active zone
     local hasActiveZone, activeZoneName = lib.callback.await('trase_gangs:drugzone:checkActive', false)
     
     if hasActiveZone then
@@ -79,7 +77,6 @@ function Drugzones:onNPCInteract(zoneName)
         return
     end
 
-    -- Start the drug zone
     local success, result = lib.callback.await('trase_gangs:drugzone:start', false, zoneName)
     
     if success then
@@ -104,7 +101,6 @@ function Drugzones:deleteNPC(zoneName)
             print('[Drugzones] Deleting NPC (ID: ' .. ped .. ') for zone: ' .. zoneName)
         end
         
-        -- Remove interaction
         local interactionId = 'drugzone_npc_' .. zoneName
         RemoveInteraction(interactionId)
         
@@ -172,14 +168,12 @@ function Drugzones:startDrugZone(zoneData)
         print('[Drugzones] Starting drug zone: ' .. zoneData.name)
     end
 
-    -- Set active drug zone FIRST before creating the point
     self.activeDrugZone = zoneData
     
     if Config.Debug then
         print('[Drugzones] activeDrugZone set to: ' .. tostring(self.activeDrugZone ~= nil))
     end
 
-    -- Create point for zone detection using ox_lib
     self.drugZonePoint = lib.points.new({
         coords = zoneData.coords,
         distance = zoneData.radius,
@@ -196,7 +190,6 @@ function Drugzones:startDrugZone(zoneData)
         drugzonesInstance.isInDrugZone = true
         TriggerServerEvent('trase_gangs:drugzone:playerEnter')
         
-        -- Wait longer for server to process and send stats back
         SetTimeout(500, function()
             if Config.Debug then
                 print('[Drugzones] About to show overlay, gangStats:', json.encode(drugzonesInstance.gangStats))
@@ -214,7 +207,6 @@ function Drugzones:startDrugZone(zoneData)
         drugzonesInstance:hideOverlay()
     end
 
-    -- Start drawing marker
     CreateThread(function()
         while self.activeDrugZone do
             Wait(0)
@@ -224,16 +216,15 @@ function Drugzones:startDrugZone(zoneData)
                 zoneData.coords.x,
                 zoneData.coords.y,
                 zoneData.coords.z - 1.0,
-                0.0, 0.0, 0.0, -- direction
-                0.0, 0.0, 0.0, -- rotation
-                zoneData.radius * 2.0, zoneData.radius * 2.0, zoneData.radius * 2.0, -- scale
+                0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0,
+                zoneData.radius * 2.0, zoneData.radius * 2.0, zoneData.radius * 2.0,
                 markerColor.r, markerColor.g, markerColor.b, markerColor.a,
                 false, false, 2, false, nil, nil, false
             )
         end
     end)
 
-    -- Schedule zone end notification
     SetTimeout(zoneData.duration * 1000, function()
         lib.notify({
             title = 'Drug Zone',
@@ -264,7 +255,6 @@ function Drugzones:endDrugZone()
         self.isInDrugZone = false
     end
 
-    -- Hide overlay and reset stats
     self:hideOverlay()
     self.currentKillstreak = 0
     self.gangStats = {}
@@ -285,10 +275,8 @@ function Drugzones:showOverlay()
         print('[Drugzones] Gang stats count: ' .. #self.gangStats)
     end
     
-    -- Get next kill reward if enabled
     local nextReward = self:getNextKillReward()
     
-    -- Get player's gang points
     local playerGangPoints = 0
     local gangTbl = LocalPlayer.state.gang
 
@@ -297,7 +285,6 @@ function Drugzones:showOverlay()
         playerGangPoints = self.gangStats[playerGangId].points or 0
     end
     
-    -- Build stats array
     local stats = {
         {
             label = 'Your Gang Points',
@@ -309,7 +296,6 @@ function Drugzones:showOverlay()
         }
     }
     
-    -- Add next reward if available
     if nextReward then
         stats[#stats + 1] = {
             label = 'Next Kill Reward',
@@ -317,7 +303,6 @@ function Drugzones:showOverlay()
         }
     end
     
-    -- Build leaderboard from gang stats
     local leaderboard = {}
     local gangCount = 0
 
@@ -330,7 +315,7 @@ function Drugzones:showOverlay()
             name = gangName,
             value = points .. ' Points',
             color = gangData.color or '#6b7280',
-            points = points -- Store for sorting
+            points = points
         }
     end
     
@@ -341,15 +326,13 @@ function Drugzones:showOverlay()
         end
     end
     
-    -- Sort leaderboard by points
     table.sort(leaderboard, function(a, b)
         return (a.points or 0) > (b.points or 0)
     end)
     
-    -- Update positions
     for i, entry in ipairs(leaderboard) do
         entry.position = i
-        entry.points = nil -- Remove temporary sorting field
+        entry.points = nil
     end
     
     if Config.Debug then
@@ -395,7 +378,6 @@ function Drugzones:getNextKillReward()
         return nil
     end
     
-    -- Find next reward milestone
     local rewards = zoneConfig.KillRewards.Rewards
     for kills, rewardData in pairs(rewards) do
         if self.currentKillstreak < kills then

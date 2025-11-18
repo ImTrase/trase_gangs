@@ -1,10 +1,7 @@
--- Activity Overlay System
--- Allows registering and displaying custom activity overlays
 
 local ActivityOverlay = {}
 ActivityOverlay.__index = ActivityOverlay
 
--- Constructor
 function ActivityOverlay:new()
     local self = setmetatable({}, ActivityOverlay)
     self.visible = false
@@ -18,7 +15,6 @@ function ActivityOverlay:new()
     return self
 end
 
--- Show the overlay with initial data
 function ActivityOverlay:Show(data)
     self.visible = true
     self.title = data.title or "ACTIVITY"
@@ -43,7 +39,6 @@ function ActivityOverlay:Show(data)
     })
 end
 
--- Hide the overlay
 function ActivityOverlay:Hide()
     self.visible = false
     SendNUIMessage({
@@ -51,7 +46,6 @@ function ActivityOverlay:Hide()
     })
 end
 
--- Update statistics cards
 function ActivityOverlay:UpdateStats(stats)
     self.stats = stats
     SendNUIMessage({
@@ -62,7 +56,6 @@ function ActivityOverlay:UpdateStats(stats)
     })
 end
 
--- Update leaderboard entries
 function ActivityOverlay:UpdateLeaderboard(leaderboard)
     self.leaderboard = leaderboard
     SendNUIMessage({
@@ -73,7 +66,6 @@ function ActivityOverlay:UpdateLeaderboard(leaderboard)
     })
 end
 
--- Add a stat card
 function ActivityOverlay:AddStat(label, value)
     table.insert(self.stats, {
         label = label,
@@ -82,7 +74,6 @@ function ActivityOverlay:AddStat(label, value)
     self:UpdateStats(self.stats)
 end
 
--- Add a leaderboard entry
 function ActivityOverlay:AddLeaderboardEntry(position, name, value, color)
     table.insert(self.leaderboard, {
         position = position,
@@ -93,30 +84,25 @@ function ActivityOverlay:AddLeaderboardEntry(position, name, value, color)
     self:UpdateLeaderboard(self.leaderboard)
 end
 
--- Clear all stats
 function ActivityOverlay:ClearStats()
     self.stats = {}
     self:UpdateStats(self.stats)
 end
 
--- Clear leaderboard
 function ActivityOverlay:ClearLeaderboard()
     self.leaderboard = {}
     self:UpdateLeaderboard(self.leaderboard)
 end
 
--- Check if visible
 function ActivityOverlay:IsVisible()
     return self.visible
 end
 
--- Set timer
 function ActivityOverlay:SetTimer(duration, label)
     self.showTimer = true
     self.timerDuration = duration
     self.timerLabel = label or "TIME REMAINING"
     
-    -- Re-show with updated timer
     SendNUIMessage({
         action = 'showActivityOverlay',
         data = {
@@ -131,11 +117,9 @@ function ActivityOverlay:SetTimer(duration, label)
     })
 end
 
--- Hide timer
 function ActivityOverlay:HideTimer()
     self.showTimer = false
     self:SetTimer(0)
 end
 
--- Export
 return ActivityOverlay

@@ -3,7 +3,6 @@ local Handler = require 'modules.handler.server'
 GangWars.active = false
 GangWars.data = {}
 
--- Helpers
 local function PrimaryIdentifier(src)
 	local ids = GetPlayerIdentifiers(src)
 	local first
@@ -39,7 +38,6 @@ function GangWars:Start(gang1Id, gang2Id, opts)
 		targetKills = target
 	}
 
-	-- Enroll current online players from these gangs
 	for _, id in ipairs(GetPlayers()) do
 		local src = tonumber(id)
 		local gid = getPlayerGang(src)
@@ -121,7 +119,6 @@ function GangWars:RecordKill(killerSrc, victimSrc)
 	self:Broadcast()
 end
 
--- Public API for UI
 lib.callback.register('trase_gangs:gangwars:startWar', function(source, opponentGangId, targetKills)
 	local myGangId = getPlayerGang(source)
 	if not myGangId then return false, 'no_gang' end
@@ -134,7 +131,6 @@ lib.callback.register('trase_gangs:gangwars:isActive', function(source)
 	return GangWars.active, GangWars.data
 end)
 
--- Basic events for integration
 RegisterNetEvent('trase_gangs:gangwars:accept', function(gang1Id, gang2Id, targetKills)
 	GangWars:Start(gang1Id, gang2Id, { targetKills = targetKills })
 end)
@@ -149,7 +145,6 @@ end)
 
 if Config.Debug then print('[GangWars] Server module loaded') end
 
--- Debug/test command: /gwstart <opponentGangId> [targetKills]
 RegisterCommand('gwstart', function(src, args)
 	if src == 0 then return end
 	local myGang = getPlayerGang(src)

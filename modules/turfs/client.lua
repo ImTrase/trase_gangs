@@ -16,7 +16,6 @@ end
 function Turfs:loadZones()
 	for name, data in pairs(Config.Features.Turfs.Zones) do
 		self.zones[name] = data
-		-- Passive marker sphere for NPC or interaction later (optional)
 		local zone = lib.zones.sphere({
 			coords = data.coords,
 			radius = data.radius,
@@ -30,7 +29,6 @@ function Turfs:loadZones()
 		})
 		data.zoneObject = zone
 
-		-- Start marker point (small radius)
 		data.startPoint = lib.points.new({
 			coords = data.coords,
 			distance = 3.0
@@ -52,11 +50,9 @@ function Turfs:_enteredStart(name, data)
 		lib.showTextUI('[E] Start Turf')
 	end
 	if Config.Debug then print('[Turfs] Near turf start marker: '..name) end
-	-- Listen for key press
 	CreateThread(function()
 		while self.startingName == name and not self.activeTurf do
 			Wait(0)
-			-- Draw marker
 			local m = Config.Features.Turfs.MarkerColor
 			DrawMarker(1, data.coords.x, data.coords.y, data.coords.z-1.0, 0.0,0.0,0.0, 0.0,0.0,0.0, 1.5,1.5,1.0, m.r,m.g,m.b,m.a, false,false,2,false,nil,nil,false)
 			if IsControlJustReleased(0, 38) then
@@ -76,7 +72,6 @@ end
 
 function Turfs:startTurfAttempt(name)
 	if self.activeTurf then return end
-	-- Must be in gang
 	local gangTbl = LocalPlayer.state.gang
 	if not gangTbl then
 		if lib and lib.notify then
@@ -102,7 +97,6 @@ end
 
 function Turfs:startTurf(turfData)
 	self.activeTurf = turfData
-	-- Create detection point
 	self.turfPoint = lib.points.new({
 		coords = turfData.coords,
 		distance = turfData.radius,
@@ -118,15 +112,12 @@ function Turfs:startTurf(turfData)
 		TriggerServerEvent('trase_gangs:turfs:playerLeave')
 		inst:hideOverlay()
 	end
-	-- Draw big circle
 	CreateThread(function()
 		while inst.activeTurf do
 			Wait(0)
 			local c = Config.Features.Turfs.ActiveMarkerColor
-			-- Draw a flatter cylinder sized to turf radius rather than a huge sphere
 			DrawMarker(1, turfData.coords.x, turfData.coords.y, turfData.coords.z-1.0,
 				0.0,0.0,0.0, 0.0,0.0,0.0,
-				-- Width / Length should be diameter; height kept small
 				turfData.radius*2.0, turfData.radius*2.0, 1.5,
 				c.r,c.g,c.b,c.a,
 				false,false,2,false,nil,nil,false)
@@ -146,7 +137,6 @@ end
 
 function Turfs:showOverlay()
 	if not self.activeTurf then return end
-	-- Build leaderboard
 	local leaderboard = {}
 	for gid, gData in pairs(self.gangStats) do
 		leaderboard[#leaderboard+1] = {
@@ -200,4 +190,3 @@ function Turfs:registerEvents()
 end
 
 Turfs:new()
-

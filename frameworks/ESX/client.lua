@@ -16,9 +16,9 @@ function GetPlayerIdentifier()
 end
 
 function SendNotification(data)
-    -- lib.notify(data)
-    -- print('[ESX Notification]', data.title or '', data.description or '')
-    print(json.encode(data))
+    if Config.Debug then
+        print(json.encode(data))
+    end
 end
 
 function GetNearbyPlayers()

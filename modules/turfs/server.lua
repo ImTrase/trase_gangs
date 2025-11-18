@@ -2,7 +2,6 @@ local Turfs = {}
 Turfs.activeTurf = nil
 Turfs.turfData = {}
 
--- Helper: primary identifier
 local function GetPrimaryIdentifier(src)
 	local ids = GetPlayerIdentifiers(src)
 	local first
@@ -27,10 +26,10 @@ function Turfs:StartTurf(turfName, turfCfg)
 		coords = turfCfg.coords,
 		radius = turfCfg.radius,
 		startTime = os.time(),
-		duration = Config.Features.Turfs.Duration,
-		gangs = {}, -- [gangId] = { name=string, kills=0, players={} }
-		players = {}, -- [src] = { kills=0, gangId=nil, identifier='' }
-		playersInside = {}, -- [src] = true
+                duration = Config.Features.Turfs.Duration,
+                gangs = {},
+                players = {},
+                playersInside = {},
 		winner = nil
 	}
 
@@ -133,7 +132,6 @@ function Turfs:BroadcastStats()
 	end
 end
 
--- Callbacks
 lib.callback.register('trase_gangs:turfs:checkActive', function(source)
 	return Turfs.activeTurf ~= nil, Turfs.activeTurf, Turfs.turfData
 end)
@@ -150,7 +148,6 @@ lib.callback.register('trase_gangs:turfs:start', function(source, turfName)
 	return ok, res
 end)
 
--- Events
 RegisterNetEvent('trase_gangs:turfs:playerEnter', function()
 	Turfs:PlayerEnter(source)
 end)

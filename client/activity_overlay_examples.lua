@@ -1,17 +1,8 @@
---[[
-    Activity Overlay - Usage Examples
-    
-    This system allows you to create custom overlay UIs that appear on the screen
-    independently from the main dashboard. Perfect for gang wars, events, activities, etc.
-]]
-
 local ActivityOverlay = require('client.activity_overlay')
 
--- Example 1: Gang War Overlay
 local function StartGangWarOverlay()
     local gangWarOverlay = ActivityOverlay:new()
     
-    -- Show the overlay with initial data and timer
     gangWarOverlay:Show({
         title = "GANG WAR",
         description = "30 KILLS TO WIN",
@@ -23,23 +14,20 @@ local function StartGangWarOverlay()
             { position = 2, name = "BD Gang", value = "44 Kills", color = "#6b7280" }
         },
         showTimer = true,
-        timerDuration = 300, -- 5 minutes in seconds
+        timerDuration = 300,
         timerLabel = "TIME REMAINING"
     })
     
-    -- Example: Update kill streak every time player gets a kill
     CreateThread(function()
         local kills = 8
         while gangWarOverlay:IsVisible() do
-            Wait(5000) -- Wait 5 seconds (simulating kills)
+            Wait(5000)
             kills = kills + 1
             
-            -- Update the stat
             gangWarOverlay:UpdateStats({
                 { label = "Kill Streak", value = kills .. " Kills" }
             })
             
-            -- Update leaderboard
             gangWarOverlay:UpdateLeaderboard({
                 { position = 1, name = "Woo Gang", value = (44 + kills) .. " Kills", color = "#22c55e" },
                 { position = 2, name = "BD Gang", value = "44 Kills", color = "#6b7280" }
@@ -47,13 +35,11 @@ local function StartGangWarOverlay()
         end
     end)
     
-    -- Hide after 60 seconds (or whenever gang war ends)
     SetTimeout(60000, function()
         gangWarOverlay:Hide()
     end)
 end
 
--- Example 2: Turf Capture Overlay
 local function StartTurfCaptureOverlay()
     local turfOverlay = ActivityOverlay:new()
     
@@ -69,11 +55,10 @@ local function StartTurfCaptureOverlay()
             { position = 2, name = "Defenders", value = "8 Kills", color = "#3b82f6" }
         },
         showTimer = true,
-        timerDuration = 180, -- 3 minutes to capture
+        timerDuration = 180,
         timerLabel = "CAPTURE TIME"
     })
     
-    -- Simulate capture progress
     CreateThread(function()
         local progress = 45
         while turfOverlay:IsVisible() and progress < 100 do
@@ -88,12 +73,10 @@ local function StartTurfCaptureOverlay()
         
         if progress >= 100 then
             turfOverlay:Hide()
-            -- Show success notification
         end
     end)
 end
 
--- Example 3: Drugzone Activity Overlay
 local function StartDrugzoneOverlay()
     local drugOverlay = ActivityOverlay:new()
     
@@ -110,9 +93,8 @@ local function StartDrugzoneOverlay()
         }
     })
     
-    -- Timer countdown
     CreateThread(function()
-        local timeLeft = 300 -- 5 minutes
+        local timeLeft = 300
         while drugOverlay:IsVisible() and timeLeft > 0 do
             Wait(1000)
             timeLeft = timeLeft - 1
@@ -130,11 +112,9 @@ local function StartDrugzoneOverlay()
     end)
 end
 
--- Example 4: Dynamic Updates
 local function DynamicOverlayExample()
     local overlay = ActivityOverlay:new()
     
-    -- Start with empty overlay
     overlay:Show({
         title = "ACTIVITY",
         description = "TRACKING PROGRESS",
@@ -142,23 +122,19 @@ local function DynamicOverlayExample()
         leaderboard = {}
     })
     
-    -- Add stats dynamically
     overlay:AddStat("Score", 0)
     overlay:AddStat("Kills", 0)
     
-    -- Add leaderboard entries dynamically
     overlay:AddLeaderboardEntry(1, "Player 1", "100 Points", "#22c55e")
     overlay:AddLeaderboardEntry(2, "Player 2", "85 Points", "#eab308")
     overlay:AddLeaderboardEntry(3, "Player 3", "70 Points", "#ef4444")
     
-    -- Clear and update later
     Wait(10000)
     overlay:ClearStats()
     overlay:ClearLeaderboard()
     overlay:Hide()
 end
 
--- Register commands for testing
 RegisterCommand('testgangwar', function()
     StartGangWarOverlay()
 end, false)
@@ -175,7 +151,6 @@ RegisterCommand('testdynamic', function()
     DynamicOverlayExample()
 end, false)
 
--- Export functions for use in other scripts
 exports('CreateActivityOverlay', function()
     return ActivityOverlay:new()
 end)
