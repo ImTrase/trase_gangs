@@ -8,7 +8,6 @@ end
 
 local activeInteractions = {}
 
-
 function AddInteraction(id, options)
     if activeInteractions[id] then
         DebugPrint('Interaction with id "' .. id .. '" already exists!')
@@ -182,15 +181,6 @@ function DrawText3D(x, y, z, text)
 end
 
 require 'modules.handler.client'
-
-if Config.Features.Drugzones.Enabled then
-    require 'modules.drugzones.client'
-end
-
-if Config.Features.Turfs.Enabled then
-    require 'modules.turfs.client'
-end
-
 
 RegisterNUICallback('trase_gangs:notify', function(data, cb)
     SendNUIMessage({

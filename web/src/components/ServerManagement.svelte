@@ -19,6 +19,7 @@
   import CheckCircleIcon from "virtual:icons/mdi/check-circle";
   import AlertCircleIcon from "virtual:icons/mdi/alert-circle";
   import InfoCircleIcon from "virtual:icons/mdi/information";
+  import MapMarkerIcon from "virtual:icons/mdi/map-marker";
 
   export let open = false;
 
@@ -32,15 +33,17 @@
     message: string;
   }
 
-  let page: PageKey = "manage";
   let searchQuery = "";
   let showDeleteModal = false;
   let showMembersModal = false;
   let showRanksModal = false;
   let showEditModal = false;
+  let showCreateModal = false;
   let selectedGang: any = null;
   let notifications: Notification[] = [];
   let notificationId = 0;
+  let showStashPrompt = false;
+  let createdGangId: number | null = null;
 
   let gangs = [];
 
@@ -50,17 +53,11 @@
     owner: ""
   };
 
-  const tabs: Array<{ key: PageKey; label: string; icon: any }> = [
-    { key: "create", label: "Create Gang", icon: ShieldIcon },
-    { key: "manage", label: "Manage Gangs", icon: ListIcon }
-  ];
-
   useNuiEvent("serverManagement:open", (data: any) => {
     console.log('[NUI] serverManagement:open received', data);
     console.log('[NUI] gangs data:', data?.gangs);
     console.log('[NUI] gangs length:', data?.gangs?.length);
     open = true;
-    page = "manage";
     if (data && data.gangs) {
       gangs = data.gangs;
       console.log('[NUI] gangs set to:', gangs);
@@ -72,6 +69,13 @@
   useNuiEvent("serverManagement:updateGangs", (data: any) => {
     if (data && data.gangs) {
       gangs = data.gangs;
+    }
+  });
+
+  useNuiEvent("serverManagement:gangCreated", (data: any) => {
+    if (data && data.gangId) {
+      createdGangId = data.gangId;
+      showStashPrompt = true;
     }
   });
 
@@ -95,10 +99,6 @@
     if (e.key === "Escape" && open) closeUI();
   }
 
-  function selectTab(k: PageKey) {
-    page = k;
-  }
-
   function showNotification(type: NotificationType, title: string, message: string) {
     const id = notificationId++;
     notifications = [...notifications, { id, type, title, message }];
@@ -116,6 +116,7 @@
     if (newGang.name && newGang.label && newGang.owner) {
       fetchNui("serverManagement:createGang", newGang).then(() => {
         newGang = { name: "", label: "", owner: "" };
+        showCreateModal = false;
       });
     } else {
       showNotification("error", "Missing Information", "Please fill in all fields.");
@@ -140,6 +141,17 @@
   function viewRanks(gang: any) {
     selectedGang = gang;
     showRanksModal = true;
+  }
+
+  function formatDate(val: any) {
+    if (!val) return 'Unknown';
+    // If it's a number or a string of digits, treat as timestamp
+    if (typeof val === 'number' || (typeof val === 'string' && /^\d+$/.test(val))) {
+        return new Date(Number(val)).toLocaleDateString();
+    }
+    // Otherwise try standard date parsing
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? 'Unknown' : d.toLocaleDateString();
   }
 
   $: filteredGangs = gangs.filter(g => 
@@ -169,180 +181,86 @@
         in:scale={{ start: 0.97, duration: 180, easing: cubicOut }}
         out:scale={{ start: 0.97, duration: 140, easing: cubicOut }}
       >
-        <!-- Sidebar -->
-        <aside class="sidebar">
-          <div class="brand">
-            <div class="brand-icon-wrapper">
-              <SettingsIcon class="brand-icon" />
-            </div>
-            <div class="brand-text">
-              <strong>Server Management</strong>
-              <span>Manage gangs and settings.</span>
-            </div>
-          </div>
-
-          <div class="nav-section">
-            <div class="nav-label">Admin Tools</div>
-            <nav class="nav" aria-label="Primary">
-              {#each tabs as t}
-                <button
-                  class="nav-item {page === t.key ? 'active' : ''}"
-                  on:click={() => selectTab(t.key)}
-                  aria-pressed={page === t.key}
-                >
-                  <svelte:component this={t.icon} class="nav-icon" />
-                  <span>{t.label}</span>
-                </button>
-              {/each}
-            </nav>
-          </div>
-
-          <div class="admin-badge">
-            <div class="badge-icon">⚡</div>
-            <div class="badge-text">
-              <div class="badge-title">Administrator</div>
-              <div class="badge-subtitle">Full Access</div>
-            </div>
-          </div>
-        </aside>
-
         <!-- Main Content -->
         <div class="main">
           <header class="topbar">
-            <h1 class="page-title">
-              {page === "create" ? "Create Gang" : "Manage Gangs"}
-            </h1>
-            <button class="close-btn" on:click={closeUI} aria-label="Close">
-              <CloseIcon class="close-icon" />
-              <span>Close</span>
-            </button>
+            <h1 class="page-title">Manage Gangs</h1>
+            <div class="header-actions">
+              <button class="btn btn-primary" on:click={() => showCreateModal = true}>
+                <ShieldIcon class="btn-icon" />
+                New Gang
+              </button>
+              <button class="close-btn" on:click={closeUI} aria-label="Close">
+                <CloseIcon class="close-icon" />
+                <span>Close</span>
+              </button>
+            </div>
           </header>
 
           <main class="content" role="region" aria-live="polite">
-            {#if page === "create"}
-              <!-- Create Gang Page -->
-              <div class="form-container">
-                <div class="form-card">
-                  <h2 class="form-title">Create New Gang</h2>
-                  <p class="form-subtitle">Set up a new gang for your server</p>
-
-                  <div class="form-group">
-                    <label for="gangName">Gang Name</label>
-                    <input
-                      id="gangName"
-                      type="text"
-                      placeholder="Enter gang name..."
-                      bind:value={newGang.name}
-                      class="form-input"
-                    />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="gangLabel">Gang Label</label>
-                    <input
-                      id="gangLabel"
-                      type="text"
-                      placeholder="Enter gang label..."
-                      bind:value={newGang.label}
-                      class="form-input"
-                    />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="gangOwner">Gang Owner (Server ID)</label>
-                    <input
-                      id="gangOwner"
-                      type="number"
-                      placeholder="Enter server ID..."
-                      bind:value={newGang.owner}
-                      class="form-input"
-                    />
-                  </div>
-
-                  <button class="btn btn-primary" on:click={createGang}>
-                    <ShieldIcon class="btn-icon" />
-                    Create Gang
-                  </button>
+            <div class="manage-container">
+              <div class="search-bar">
+                <div class="search-icon">
+                  <SearchIcon />
                 </div>
-
-                <div class="info-card">
-                  <h3>Quick Guide</h3>
-                  <ul>
-                    <li>Gang names must be unique</li>
-                    <li>Gang label is the display name</li>
-                    <li>Owner must be an online player</li>
-                    <li>Gang will start with default settings</li>
-                    <li>Owner will have full permissions</li>
-                  </ul>
-                </div>
+                <input
+                  type="text"
+                  placeholder="Search gangs..."
+                  bind:value={searchQuery}
+                  class="search-input"
+                />
               </div>
 
-            {:else if page === "manage"}
-              <!-- Manage Gangs Page -->
-              <div class="manage-container">
-                <div class="search-bar">
-                  <div class="search-icon">
-                    <SearchIcon />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Search gangs..."
-                    bind:value={searchQuery}
-                    class="search-input"
-                  />
-                </div>
-
-                <div class="gang-list">
-                  {#each filteredGangs as gang}
-                    <div class="gang-card">
-                      <div class="gang-header">
-                        <div class="gang-name-section">
-                          <h3 class="gang-name">{gang.label}</h3>
-                          <span class="gang-id">ID: {gang.id}</span>
-                        </div>
-                        <button class="btn-icon-only" on:click={() => viewGangDetails(gang)}>
-                          <EditIcon />
-                        </button>
+              <div class="gang-list">
+                {#each filteredGangs as gang}
+                  <div class="gang-card">
+                    <div class="gang-header">
+                      <div class="gang-name-section">
+                        <h3 class="gang-name">{gang.label}</h3>
+                        <span class="gang-id">ID: {gang.id}</span>
                       </div>
+                      <button class="btn-icon-only" on:click={() => viewGangDetails(gang)}>
+                        <EditIcon />
+                      </button>
+                    </div>
 
-                      <div class="gang-details">
-                        <div class="detail-item">
-                          <UsersIcon class="detail-icon" />
-                          <span class="detail-label">Owner:</span>
-                          <span class="detail-value">{gang.owner}</span>
-                        </div>
-                        <div class="detail-item">
-                          <UsersIcon class="detail-icon" />
-                          <span class="detail-label">Members:</span>
-                          <span class="detail-value">{gang.members}</span>
-                        </div>
-                        <div class="detail-item">
-                          <CrownIcon class="detail-icon" />
-                          <span class="detail-label">Ranks:</span>
-                          <span class="detail-value">{gang.ranks}</span>
-                        </div>
-                        <div class="detail-item">
-                          <span class="detail-label">Created:</span>
-                          <span class="detail-value">{gang.created ? new Date(gang.created).toLocaleDateString() : 'Unknown'}</span>
-                        </div>
+                    <div class="gang-details">
+                      <div class="detail-item">
+                        <UsersIcon class="detail-icon" />
+                        <span class="detail-label">Owner:</span>
+                        <span class="detail-value">{gang.owner}</span>
                       </div>
-
-                      <div class="gang-actions">
-                        <button class="btn btn-secondary btn-sm" on:click={() => viewMembers(gang)}>View Members</button>
-                        <button class="btn btn-secondary btn-sm" on:click={() => viewRanks(gang)}>View Ranks</button>
-                        <button class="btn btn-danger btn-sm" on:click={() => {
-                          selectedGang = gang;
-                          showDeleteModal = true;
-                        }}>
-                          <TrashIcon class="btn-icon-sm" />
-                          Delete
-                        </button>
+                      <div class="detail-item">
+                        <UsersIcon class="detail-icon" />
+                        <span class="detail-label">Members:</span>
+                        <span class="detail-value">{gang.members}</span>
+                      </div>
+                      <div class="detail-item">
+                        <CrownIcon class="detail-icon" />
+                        <span class="detail-label">Ranks:</span>
+                        <span class="detail-value">{gang.ranks}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">Created:</span>
+                        <span class="detail-value">{formatDate(gang.created)}</span>
                       </div>
                     </div>
-                  {/each}
-                </div>
+
+                    <div class="gang-actions">
+                      <button class="btn btn-secondary btn-sm" on:click={() => viewMembers(gang)}>View Members</button>
+                      <button class="btn btn-secondary btn-sm" on:click={() => viewRanks(gang)}>View Ranks</button>
+                      <button class="btn btn-danger btn-sm" on:click={() => {
+                        selectedGang = gang;
+                        showDeleteModal = true;
+                      }}>
+                        <TrashIcon class="btn-icon-sm" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                {/each}
               </div>
-            {/if}
+            </div>
           </main>
         </div>
       </div>
@@ -379,6 +297,89 @@
         </div>
       {/each}
     </div>
+
+    <!-- Create Gang Modal -->
+    {#if showCreateModal}
+      <div class="modal-backdrop" on:click={() => showCreateModal = false}>
+        <div class="modal" on:click|stopPropagation>
+          <div class="modal-header">
+            <h3>Create New Gang</h3>
+            <button class="btn-icon-only" on:click={() => showCreateModal = false}>
+              <CloseIcon />
+            </button>
+          </div>
+          
+          <div class="modal-content">
+            <div class="form-group">
+              <label>Gang Name (Internal)</label>
+              <input
+                type="text"
+                bind:value={newGang.name}
+                class="form-input"
+                placeholder="e.g. ballas"
+              />
+            </div>
+            <div class="form-group">
+              <label>Gang Label (Display Name)</label>
+              <input
+                type="text"
+                bind:value={newGang.label}
+                class="form-input"
+                placeholder="e.g. Ballas"
+              />
+            </div>
+            <div class="form-group">
+              <label>Owner Server ID</label>
+              <input
+                type="text"
+                bind:value={newGang.owner}
+                class="form-input"
+                placeholder="e.g. 1"
+              />
+            </div>
+            
+            <div class="info-card" style="margin-top: 16px;">
+              <h3>Important Notes</h3>
+              <ul>
+                <li>Gang name must be unique and lowercase</li>
+                <li>Owner must be online to create the gang</li>
+                <li>Default ranks will be created automatically</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-secondary" on:click={() => showCreateModal = false}>
+              Cancel
+            </button>
+            <button class="btn btn-primary" on:click={createGang}>
+              Create Gang
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    {#if showStashPrompt}
+      <div class="modal-backdrop">
+        <div class="modal" on:click|stopPropagation>
+          <h3>Gang Created!</h3>
+          <p>Do you want to place the gang stash now?</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" on:click={() => showStashPrompt = false}>
+              Later
+            </button>
+            <button class="btn btn-primary" on:click={() => {
+              fetchNui("serverManagement:placeStash", { gangId: createdGangId });
+              showStashPrompt = false;
+              closeUI();
+            }}>
+              Place Stash Now
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
 
     {#if showDeleteModal && selectedGang}
       <div class="modal-backdrop" on:click={() => showDeleteModal = false}>
@@ -428,7 +429,7 @@
                       {member.online ? 'Online' : 'Offline'}
                     </span>
                   </div>
-                  <div class="td">{member.joined}</div>
+                  <div class="td">{formatDate(member.joined)}</div>
                 </div>
               {/each}
             </div>
@@ -552,7 +553,7 @@
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Created</span>
-                    <span class="stat-value">{selectedGang.created ? new Date(selectedGang.created).toLocaleDateString() : 'Unknown'}</span>
+                    <span class="stat-value">{formatDate(selectedGang.created)}</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Gang ID</span>
@@ -577,6 +578,14 @@
                   }}>
                     <CrownIcon class="btn-icon" />
                     View Ranks
+                  </button>
+                  <button class="btn btn-secondary" on:click={() => {
+                    fetchNui("serverManagement:placeStash", { gangId: selectedGang.id });
+                    showEditModal = false;
+                    closeUI();
+                  }}>
+                    <MapMarkerIcon class="btn-icon" />
+                    Place Stash
                   </button>
                   <button class="btn btn-danger" on:click={() => {
                     showEditModal = false;
@@ -652,8 +661,8 @@
     max-width: 95vw;
     height: 820px;
     max-height: 94vh;
-    display: grid;
-    grid-template-columns: 240px 1fr;
+    display: flex;
+    flex-direction: column;
     background: var(--bg-panel);
     border-radius: 20px;
     overflow: hidden;
@@ -662,157 +671,14 @@
     color: var(--text-primary);
   }
 
-  /* Sidebar */
-  .sidebar {
-    background: var(--bg-sidebar);
-    display: flex;
-    flex-direction: column;
-    padding: 24px 16px;
-    gap: 24px;
-    border-right: 1px solid var(--border);
-  }
-
-  .brand {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 8px;
-  }
-
-  .brand-icon-wrapper {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-    border-radius: 12px;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-  }
-
-  .brand-icon {
-    width: 28px;
-    height: 28px;
-    color: white;
-  }
-
-  .brand-text {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-  }
-
-  .brand-text strong {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-primary);
-    line-height: 1.2;
-  }
-
-  .brand-text span {
-    font-size: 11px;
-    color: var(--text-dim);
-    line-height: 1.3;
-  }
-
-  .nav-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .nav-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-dim);
-    padding: 0 12px 4px;
-  }
-
-  .nav {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: transparent;
-    border: none;
-    border-radius: 10px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 150ms ease;
-    font-size: 14px;
-    font-weight: 500;
-    text-align: left;
-  }
-
-  .nav-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary);
-  }
-
-  .nav-item.active {
-    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-    color: white;
-  }
-
-  .nav-icon {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-
-  .admin-badge {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--bg-elevated);
-    border-radius: 12px;
-    border: 1px solid var(--border);
-  }
-
-  .badge-icon {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    border-radius: 10px;
-    display: grid;
-    place-items: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-
-  .badge-text {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .badge-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .badge-subtitle {
-    font-size: 11px;
-    color: var(--text-dim);
-  }
-
   /* Main Content */
   .main {
-    display: grid;
-    grid-template-rows: auto 1fr;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     background: var(--bg-dark);
+    overflow: hidden;
+    padding-bottom: 10px;
   }
 
   .topbar {
@@ -822,6 +688,13 @@
     padding: 20px 32px;
     background: var(--bg-panel);
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   .page-title {
@@ -862,42 +735,16 @@
 
   /* Content */
   .content {
+    flex: 1;
     padding: 24px;
     overflow-y: auto;
   }
 
-  .form-container {
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    gap: 20px;
-    max-width: 1200px;
-  }
-
-  .form-card {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
+  .manage-container {
     display: flex;
     flex-direction: column;
     gap: 20px;
-  }
-
-  .form-card.danger {
-    border-color: var(--danger);
-  }
-
-  .form-title {
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0;
-    color: var(--text-primary);
-  }
-
-  .form-subtitle {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin: -12px 0 0 0;
+    min-height: 0; /* Important for flex scrolling */
   }
 
   .form-group {
@@ -933,11 +780,6 @@
     color: var(--text-dim);
     cursor: not-allowed;
     opacity: 0.6;
-  }
-
-  .form-hint {
-    font-size: 11px;
-    color: var(--text-dim);
   }
 
   .info-card {
@@ -1047,13 +889,6 @@
     color: var(--text-primary);
   }
 
-  /* Manage Page */
-  .manage-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
   .search-bar {
     position: relative;
     max-width: 500px;
@@ -1100,12 +935,6 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-  }
-
-  .gang-card.compact {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
   }
 
   .gang-header {
@@ -1168,22 +997,6 @@
     gap: 8px;
     padding-top: 8px;
     border-top: 1px solid var(--border);
-  }
-
-  .gang-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .gang-info strong {
-    font-size: 14px;
-    color: var(--text-primary);
-  }
-
-  .gang-info span {
-    font-size: 12px;
-    color: var(--text-dim);
   }
 
   /* Stats Grid */

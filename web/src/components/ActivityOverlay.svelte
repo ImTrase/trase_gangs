@@ -21,7 +21,7 @@
   let progressPercent = 100;
   let timerInterval: number | null = null;
 
-  $: if (showTimer && timerDuration > 0) {
+  $: if (visible && showTimer && timerDuration > 0) {
     startTimer();
   }
 

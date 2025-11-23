@@ -45,6 +45,7 @@
     { id: 'demote_members', label: 'Demote Members', description: 'Can demote members to lower ranks' },
     { id: 'manage_ranks', label: 'Manage Ranks', description: 'Can create, edit, and delete ranks' },
     { id: 'manage_permissions', label: 'Manage Permissions', description: 'Can modify rank permissions' },
+    { id: 'access_stash', label: 'Access Stash', description: 'Can access the gang stash' },
     { id: 'view_audit_log', label: 'View Audit Log', description: 'Can view gang activity logs' },
     { id: 'manage_unlocks', label: 'Manage Unlocks', description: 'Can purchase gang unlocks' },
     { id: 'start_gangwar', label: 'Start Gang War', description: 'Can initiate gang wars' },

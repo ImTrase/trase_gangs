@@ -57,3 +57,16 @@ end
 function SendNotification(source, data)
     TriggerClientEvent('ox_lib:notify', source, data)
 end
+
+function GetPrimaryIdentifier(source)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    return xPlayer and xPlayer.identifier or nil
+end
+
+function AlertServer(target, message)
+    TriggerClientEvent('chat:addMessage', target or -1, {
+        color = {255, 0, 0},
+        multiline = true,
+        args = {"SYSTEM", message}
+    })
+end

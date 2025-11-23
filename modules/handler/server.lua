@@ -22,8 +22,12 @@ function Handler:CreateTables()
             `max_members` INT(11) DEFAULT 10,
             `max_ranks` INT(11) DEFAULT 5,
             `bank` INT(11) DEFAULT 0,
+            `drugzone_wins` INT(11) DEFAULT 0,
+            `gangwar_wins` INT(11) DEFAULT 0,
+            `turf_wins` INT(11) DEFAULT 0,
             `reputation` INT(11) DEFAULT 0,
             `total_revenue` INT(11) DEFAULT 0,
+            `stash_coords` TEXT DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
@@ -149,8 +153,25 @@ function Handler:Init()
     self:CreateTables()
     self:LoadAllGangs()
     
+    if GetResourceState('ox_inventory') == 'started' then
+        for gangId, gang in pairs(self.gangs) do
+            self:RegisterStash(gangId, gang.label)
+        end
+    end
+    
     if Config.Debug then
         DebugPrint('[Handler] Gang handler initialized with ' .. #self.gangs .. ' gangs')
+    end
+    
+    -- Notify all clients that the handler is ready so they can fetch data
+    TriggerClientEvent('trase_gangs:client:serverReady', -1)
+end
+
+function Handler:RegisterStash(gangId, label)
+    if GetResourceState('ox_inventory') == 'started' then
+        local stashId = 'gang_' .. gangId
+        -- RegisterStash(id, label, slots, weight, owner, groups, coords)
+        exports.ox_inventory:RegisterStash(stashId, label .. ' Stash', 100, 1000000)
     end
 end
 
@@ -158,6 +179,35 @@ function Handler:LoadAllGangs()
     local gangs = MySQL.query.await('SELECT * FROM trase_gangs', {})
     
     for _, gang in ipairs(gangs) do
+        if Config.Debug then
+             DebugPrint('[LoadAllGangs] Processing gang: ' .. (gang.name or 'unknown') .. ' ID: ' .. (gang.id or 'nil'))
+             DebugPrint('[LoadAllGangs] Raw stash_coords: ' .. tostring(gang.stash_coords))
+        end
+
+        if gang.stash_coords and type(gang.stash_coords) == 'string' and gang.stash_coords ~= '' then
+            local status, result = pcall(json.decode, gang.stash_coords)
+            if status then
+                gang.stash_coords = result
+                if Config.Debug then
+                    DebugPrint('[LoadAllGangs] Successfully decoded stash_coords')
+                end
+            else
+                if Config.Debug then
+                    DebugPrint('[LoadAllGangs] Failed to decode stash_coords: ' .. tostring(result))
+                end
+                gang.stash_coords = nil
+            end
+        elseif type(gang.stash_coords) == 'table' then
+             if Config.Debug then
+                DebugPrint('[LoadAllGangs] stash_coords is already a table')
+             end
+        else
+             if Config.Debug then
+                DebugPrint('[LoadAllGangs] stash_coords is nil or empty')
+             end
+             gang.stash_coords = nil
+        end
+
         self.gangs[gang.id] = gang
         
         local members = MySQL.query.await('SELECT * FROM trase_gang_members WHERE gang_id = ?', {gang.id})
@@ -252,6 +302,7 @@ function Handler:CreateGang(data)
     self:AddMember(insertId, data.owner, 4, data.owner, true)
     
     self:LoadAllGangs()
+    self:RegisterStash(insertId, data.label or data.name)
     
     self:AddAuditLog(insertId, data.owner, 'gang_created', nil, 'Gang created')
     
@@ -282,14 +333,28 @@ function Handler:DeleteGang(gangId, actorIdentifier)
     return true
 end
 
-function Handler:AddMember(gangId, identifier, rankGrade, actorIdentifier, skipInvite)
+function Handler:AddMember(gangId, identifier, rankGrade, actorIdentifier, skipInvite, force)
     local gang = self.gangs[gangId]
     if not gang then
         return false, 'gang_not_found'
     end
     
     if self.playerGangs[identifier] then
-        return false, 'already_in_gang'
+        -- If they're already in the target gang: treat as duplicate entry
+        if self.playerGangs[identifier] == gangId then
+            return false, 'already_in_gang'
+        end
+
+        -- If 'force' is provided, remove them from current gang so we can add them to the new one
+        if force then
+            local currentGangId = self.playerGangs[identifier]
+            local ok, err = self:RemoveMember(currentGangId, identifier, actorIdentifier)
+            if not ok then
+                return false, err or 'failed_to_remove_from_current_gang'
+            end
+        else
+            return false, 'already_in_gang'
+        end
     end
     
     local memberCount = 0
@@ -344,9 +409,9 @@ function Handler:RemoveMember(gangId, identifier, actorIdentifier)
         return false, 'gang_not_found'
     end
     
-    if gang.owner_identifier == identifier then
-        return false, 'cannot_kick_owner'
-    end
+    -- if gang.owner_identifier == identifier then
+    --     return false, 'cannot_kick_owner'
+    -- end
     
     MySQL.query.await('DELETE FROM trase_gang_members WHERE gang_id = ? AND identifier = ?', {gangId, identifier})
     
@@ -594,9 +659,7 @@ function Handler:DeleteRank(gangId, rankId, actorIdentifier)
         for _, rank in pairs(gang.ranks) do
             local memberCount = 0
             for _, member in pairs(gang.members) do
-                if member.rank_id == rank.id then
-                    memberCount = memberCount + 1
-                end
+                memberCount = memberCount + 1
             end
             
             table.insert(updatedRanks, {
@@ -642,6 +705,34 @@ function Handler:UpdateGangInfo(gangId, data, actorIdentifier)
     end
     
     self:AddAuditLog(gangId, actorIdentifier, 'gang_updated', nil, 'Gang info updated')
+    
+    return true
+end
+
+function Handler:UpdateGangStash(gangId, coords, actorIdentifier)
+    local gang = self.gangs[gangId]
+    if not gang then
+        return false, 'gang_not_found'
+    end
+    
+    local coordsJson = json.encode(coords)
+    
+    MySQL.query.await('UPDATE trase_gangs SET stash_coords = ? WHERE id = ?', {coordsJson, gangId})
+    
+    gang.stash_coords = coords
+    
+    self:AddAuditLog(gangId, actorIdentifier, 'stash_updated', nil, 'Gang stash location updated')
+    
+    -- Register the stash with ox_inventory
+    self:RegisterStash(gangId, gang.label)
+    
+    -- Notify online members
+    for identifier, _ in pairs(gang.members) do
+        local memberPlayer = GetPlayerFromIdentifier(identifier)
+        if memberPlayer then
+            TriggerClientEvent('trase_gangs:client:gangUpdated', memberPlayer.source, gang)
+        end
+    end
     
     return true
 end
@@ -712,6 +803,7 @@ function Handler:HasPermission(identifier, permission)
     end
     
     if not memberRank then
+        print('Member rank not found for identifier:', identifier)
         return false
     end
     
@@ -897,14 +989,34 @@ function Handler:GetPlayerInvites(identifier)
 end
 
 CreateThread(function()
-    Wait(1000)
     Handler:Init()
 end)
 
 lib.callback.register('trase_gangs:server:getPlayerGang', function(source)
     local xPlayer = GetPlayerFromId(source)
-    if not xPlayer then return nil end
+    if not xPlayer then 
+        if Config.Debug then DebugPrint('[getPlayerGang] xPlayer is nil for source ' .. source) end
+        return nil 
+    end
     
+    if Config.Debug then
+        DebugPrint('[getPlayerGang] Request from source: ' .. source)
+        DebugPrint('[getPlayerGang] xPlayer.identifier: ' .. tostring(xPlayer.identifier))
+        DebugPrint('[getPlayerGang] Lookup in playerGangs: ' .. tostring(Handler.playerGangs[xPlayer.identifier]))
+        
+        -- Debug: Check for partial matches in the cache
+        local found = false
+        for k, v in pairs(Handler.playerGangs) do
+            if type(k) == 'string' and type(xPlayer.identifier) == 'string' then
+                if string.find(k, xPlayer.identifier, 1, true) or string.find(xPlayer.identifier, k, 1, true) then
+                    DebugPrint('[getPlayerGang] Possible match found in cache: Key="' .. k .. '" Value=' .. tostring(v))
+                    found = true
+                end
+            end
+        end
+        if not found then DebugPrint('[getPlayerGang] No similar keys found in cache.') end
+    end
+
     return Handler:GetPlayerGang(xPlayer.identifier)
 end)
 
@@ -958,6 +1070,19 @@ lib.callback.register('trase_gangs:server:admin:updateGangSettings', function(so
     end
     
     return Handler:UpdateGangSettings(gangId, data)
+end)
+
+lib.callback.register('trase_gangs:server:admin:updateGangStash', function(source, gangId, coords)
+    local xPlayer = GetPlayerFromId(source)
+    if not xPlayer then return false, 'player_not_found' end
+    
+    if not IsAdmin(source) then
+        return false, 'no_permission'
+    end
+    
+    DebugPrint('[Server] updateGangStash: gangId:', gangId, 'type:', type(gangId))
+    
+    return Handler:UpdateGangStash(tonumber(gangId), coords, xPlayer.identifier)
 end)
 
 lib.callback.register('trase_gangs:server:admin:getAllGangs', function(source)
@@ -1066,7 +1191,8 @@ lib.callback.register('trase_gangs:server:admin:getAllGangs', function(source)
             ranks = rankCount,
             created = gang.created_at,
             membersList = membersList,
-            ranksList = ranksList
+            ranksList = ranksList,
+            stash_coords = gang.stash_coords
         })
     end
     
@@ -1840,7 +1966,7 @@ RegisterCommand('setgang', function(source, args)
         Handler:RemoveMember(currentGangId, targetIdentifier, targetIdentifier)
     end
     
-    local success, result = Handler:AddMember(targetGangId, targetIdentifier, rankGrade, targetIdentifier, true)
+    local success, result = Handler:AddMember(targetGangId, targetIdentifier, rankGrade, targetIdentifier, true, true)
     
     if success then
         if rankGrade == 4 then
@@ -2008,6 +2134,7 @@ lib.callback.register('trase_gangs:server:sendGangWarInvite', function(source, d
     
     local targetGangId = data.gangId
     local wagerAmount = data.wager or 0
+    local killsToWin = data.killsToWin or 50
     
     local targetGang = MySQL.query.await('SELECT id, label FROM trase_gangs WHERE id = ?', {targetGangId})
     if not targetGang or #targetGang == 0 then
@@ -2019,17 +2146,19 @@ lib.callback.register('trase_gangs:server:sendGangWarInvite', function(source, d
         return false, 'request_already_sent'
     end
     
-    local requestId = MySQL.insert.await('INSERT INTO trase_gang_war_requests (challenger_gang_id, target_gang_id, wager_amount, requested_by) VALUES (?, ?, ?, ?)', {
+    local requestId = MySQL.insert.await('INSERT INTO trase_gang_war_requests (challenger_gang_id, target_gang_id, wager_amount, kills_to_win, requested_by) VALUES (?, ?, ?, ?, ?)', {
         gang.id,
         targetGangId,
         wagerAmount,
+        killsToWin,
         identifier
     })
     
     if requestId then
         for targetIdentifier, _ in pairs(Handler.playerGangs) do
             if Handler.playerGangs[targetIdentifier] == targetGangId then
-                local targetSource = GetPlayerSourceByIdentifier(targetIdentifier)
+                local p = GetPlayerFromIdentifier(targetIdentifier)
+                local targetSource = p and p.source or nil
                 if targetSource then
                     SendNotification(targetSource, {
                         title = 'Gang War Request',
@@ -2048,7 +2177,7 @@ lib.callback.register('trase_gangs:server:sendGangWarInvite', function(source, d
                 id = requestId,
                 toGang = targetGang[1].label,
                 toGangId = targetGangId,
-                killsToWin = 25,
+                killsToWin = killsToWin,
                 wager = wagerAmount,
                 sentAt = os.date('%Y-%m-%d %H:%M:%S')
             }
@@ -2092,21 +2221,22 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
     
     local gang = Handler:GetPlayerGang(identifier)
     if not gang then return false, 'not_in_gang' end
+
     
     local isOwner = gang.owner_identifier == identifier
     local hasPermission = Handler:HasPermission(identifier, 'manage_wars')
-    
+
     if not isOwner and not hasPermission then
         return false, 'no_permission'
     end
-    
+
     local requestId = data.requestId
     
     local request = MySQL.query.await('SELECT * FROM trase_gang_war_requests WHERE id = ? AND target_gang_id = ? AND status = "pending"', {requestId, gang.id})
     if not request or #request == 0 then
         return false, 'request_not_found'
     end
-    
+
     request = request[1]
     
     MySQL.update.await('UPDATE trase_gang_war_requests SET status = "accepted" WHERE id = ?', {requestId})
@@ -2117,11 +2247,13 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
         gang.id,
         request.wager_amount
     })
+
     
     if warId then
         for playerIdentifier, gangId in pairs(Handler.playerGangs) do
             if gangId == request.challenger_gang_id or gangId == gang.id then
-                local playerSource = GetPlayerSourceByIdentifier(playerIdentifier)
+                local p = GetPlayerFromIdentifier(playerIdentifier)
+                local playerSource = p and p.source or nil
                 if playerSource then
                     SendNotification(playerSource, {
                         title = 'Gang War Started!',
@@ -2133,7 +2265,24 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
         end
         
         Handler:AddAuditLog(gang.id, identifier, 'gang_war_accepted', nil, 'Accepted war request')
-        
+
+        -- Trigger the gang war start event on the gangwars server module so it starts the war
+        -- Use configured targetKills if available
+        local targetKills = request.kills_to_win or Config.Features.GangWars and Config.Features.GangWars.TargetKills or 50
+        local wager = request.wager_amount or 0
+        local c1 = tonumber(request.challenger_gang_id)
+        local c2 = tonumber(gang.id)
+        -- Attempt to start the war using the GangWars server module directly
+        local success, startResult = pcall(function()
+            local GangWarsModule = require('modules.gangwars.server')
+            return GangWarsModule:Start(c1, c2, { targetKills = targetKills, wager = wager, gang1Name = Handler.gangs[c1] and Handler.gangs[c1].label or nil, gang2Name = gang.label })
+        end)
+        if not success then
+            DebugPrint('[Handler] Failed to call GangWars:Start: ' .. tostring(startResult))
+        else
+            DebugPrint('[Handler] GangWars:Start invoked; result: ' .. tostring(startResult and (type(startResult) ~= 'table' and tostring(startResult) or 'table')))
+        end
+
         return true, 'war_started'
     end
     
@@ -2165,7 +2314,8 @@ lib.callback.register('trase_gangs:server:declineGangWarRequest', function(sourc
     
     for playerIdentifier, gangId in pairs(Handler.playerGangs) do
         if gangId == request[1].challenger_gang_id then
-            local playerSource = GetPlayerSourceByIdentifier(playerIdentifier)
+            local p = GetPlayerFromIdentifier(playerIdentifier)
+            local playerSource = p and p.source or nil
             if playerSource then
                 SendNotification(playerSource, {
                     title = 'Gang War Declined',

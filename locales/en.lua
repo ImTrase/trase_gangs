@@ -23,6 +23,6 @@ Config.Strings['en'] = {
     ['failed_to_create_rank'] = 'Failed to create rank',
     ['max_ranks_reached'] = 'Maximum number of ranks reached',
 
-    ['drugzone_npc_interact'] = '[E] - Start Drugzone',
+    ['drugzone_npc_interact_ox_lib'] = '[E] - Start Drugzone',
     ['drugzone_npc_interact_ox_target'] = 'Start Drugzone'
 }

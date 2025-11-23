@@ -1,8 +1,8 @@
 Config = { Strings = {} }
 
 Config.Language = 'en'
-Config.Debug = true
-Config.InteractionType = 'ox_target'
+Config.Debug = false
+Config.InteractionType = 'ox_lib' -- ox_lib or ox_target
 
 Config.Framework = 'auto'
 
@@ -16,14 +16,14 @@ Config.Handler = {
     DefaultMaxMembers = 10,
     DefaultMaxRanks = 5,
     InviteExpiryTime = 3600,
-    
+
     ReputationEnabled = true,
     ReputationRewards = {
         TurfWin = 100,
         DrugzoneWin = 75,
         GangWarWin = 150,
     },
-    
+
     UnlocksEnabled = true,
     Unlocks = {
         storage_upgrade_1 = { cost = 500, label = 'Storage Upgrade Tier 1' },
@@ -66,7 +66,7 @@ Config.Features.Drugzones = {
 
 Config.Features.Turfs = {
     Enabled = true,
-    Duration = 300,
+    Duration = 30,
     MarkerType = 1,
     MarkerColor = { r = 0, g = 120, b = 255, a = 90 },
     ActiveMarkerColor = { r = 0, g = 200, b = 255, a = 120 },
@@ -96,4 +96,42 @@ Config.Features.GangWars = {
 
 Config.Features.Leaderboards = {
     Enabled = true,
+}
+
+Config.UI = {
+    -- Main Theme: Blue
+    Colors = {
+        bg_dark = '#0f0f17',
+        bg_panel = '#18181f',
+        bg_sidebar = '#1a1a22',
+        bg_elevated = '#20202a',
+        accent = '#3b82f6',
+        accent_hover = '#2563eb',
+        accent_light = '#60a5fa',
+        danger = '#ef4444',
+        danger_hover = '#dc2626',
+        text_primary = '#ffffff',
+        text_secondary = '#a0a0ab',
+        text_dim = '#71717a',
+        border = '#27272f',
+        border_light = '#3a3a44',
+    },
+
+    -- RED EXAMPLE
+    -- Colors = {
+    --     bg_dark = '#1f0f0f',
+    --     bg_panel = '#2a1818',
+    --     bg_sidebar = '#221a1a',
+    --     bg_elevated = '#2a2020',
+    --     accent = '#ef4444',
+    --     accent_hover = '#dc2626',
+    --     accent_light = '#f87171',
+    --     danger = '#3b82f6',
+    --     danger_hover = '#2563eb',
+    --     text_primary = '#ffffff',
+    --     text_secondary = '#a0a0ab',
+    --     text_dim = '#71717a',
+    --     border = '#27272f',
+    --     border_light = '#3a3a44',
+    -- },
 }

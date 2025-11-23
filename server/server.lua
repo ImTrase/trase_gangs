@@ -27,6 +27,7 @@ local function checkGangWarTables()
             `challenger_gang_id` INT(11) NOT NULL,
             `target_gang_id` INT(11) NOT NULL,
             `wager_amount` INT(11) NOT NULL DEFAULT 0,
+            `kills_to_win` INT(11) NOT NULL DEFAULT 50,
             `requested_by` VARCHAR(60) NOT NULL,
             `status` ENUM('pending', 'accepted', 'declined', 'expired') NOT NULL DEFAULT 'pending',
             `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -203,4 +204,72 @@ RegisterCommand('gang:addtest', function(source, args, rawCommand)
     else
         DoPrint('success', 'Added ' .. added .. ' test members to ' .. gang.label)
 end
+end, false)
+
+-- /leavegang (if they are in a gang, remove them)
+RegisterCommand('leavegang', function(src)
+    local Handler = exports['trase_gangs']:GetServerHandler()
+    
+    local ply = Player(src)
+    if not ply then
+        return
+    end
+    
+    local state = ply.state
+    if not state then
+        return
+    end
+    
+    local gangTbl = state.gang
+    if not gangTbl then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = {255, 0, 0},
+            args = {'[Gang System]', 'You are not in a gang!'}
+        })
+        return
+    end
+    
+    local gangId = gangTbl.id
+    local gang = Handler.gangs[gangId]
+    if not gang then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = {255, 0, 0},
+            args = {'[Gang System]', 'Your gang does not exist!'}
+        })
+        return
+    end
+    
+    local identifier = GetPrimaryIdentifier(src)
+    if not identifier then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = {255, 0, 0},
+            args = {'[Gang System]', 'Could not retrieve your identifier!'}
+        })
+        return
+    end
+    
+    local member = gang.members[identifier]
+    if not member then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = {255, 0, 0},
+            args = {'[Gang System]', 'You are not listed as a member of this gang!'}
+        })
+        return
+    end
+    
+    MySQL.query.await([[
+        DELETE FROM trase_gang_members WHERE gang_id = ? AND identifier = ?
+    ]], {gangId, identifier})
+    
+    MySQL.query.await([[
+        DELETE FROM trase_gang_member_stats WHERE gang_id = ? AND identifier = ?
+    ]], {gangId, identifier})
+    
+    gang.members[identifier] = nil
+    Handler.playerGangs[identifier] = nil
+    
+    TriggerClientEvent('chat:addMessage', src, {
+        color = {0, 255, 0},
+        args = {'[Gang System]', 'You have left the gang: ' .. gang.label}
+    })
 end, false)

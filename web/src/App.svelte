@@ -15,6 +15,23 @@
     fetchNui('fetchLocales').then((fetchedLocales) => {
       locales.set(fetchedLocales);
     });
+
+    fetchNui('fetchTheme').then((colors) => {
+      applyTheme(colors);
+    });
+  });
+
+  function applyTheme(colors: any) {
+    if (!colors) return;
+    const root = document.documentElement;
+    for (const [key, value] of Object.entries(colors)) {
+      const cssVar = '--' + key.replace(/_/g, '-');
+      root.style.setProperty(cssVar, value as string);
+    }
+  }
+
+  useNuiEvent('updateTheme', (colors) => {
+    applyTheme(colors);
   });
 
   import { debugData } from './utils/debugData';

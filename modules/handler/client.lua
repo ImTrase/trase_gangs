@@ -1,6 +1,8 @@
 local Handler = {}
 Handler.currentGang = nil
 Handler.onlineMembers = {}
+Handler.activeStashInteraction = nil
+Handler.stashMarkerThreadRunning = false
 
 local function DebugPrint(...)
     if Config.Debug then
@@ -22,6 +24,7 @@ function Handler:Init()
     
     RegisterNetEvent('trase_gangs:client:gangUpdated', function(gangData)
         self.currentGang = gangData
+        self:UpdateStashInteraction()
         if Config.Debug then
             DebugPrint('[Handler Client] Gang data updated')
         end
@@ -29,8 +32,24 @@ function Handler:Init()
     
     RegisterNetEvent('trase_gangs:client:gangRemoved', function()
         self.currentGang = nil
+        self:UpdateStashInteraction()
         if Config.Debug then
             DebugPrint('[Handler Client] Player removed from gang')
+        end
+    end)
+
+    RegisterNetEvent('trase_gangs:client:serverReady', function()
+        if Config.Debug then
+            DebugPrint('[Handler Client] Server reported ready, refreshing gang data...')
+        end
+        self:RequestGangData()
+        
+        -- Send UI Config
+        if Config.UI and Config.UI.Colors then
+            SendNUIMessage({
+                action = 'updateTheme',
+                data = Config.UI.Colors
+            })
         end
     end)
 end
@@ -38,12 +57,92 @@ end
 function Handler:RequestGangData()
     lib.callback('trase_gangs:server:getPlayerGang', false, function(gang)
         self.currentGang = gang
+        self:UpdateStashInteraction()
         if gang then
             if Config.Debug then
                 DebugPrint('[Handler Client] Loaded gang: ' .. gang.label)
             end
         end
     end)
+end
+
+function Handler:UpdateStashInteraction()
+    -- Remove active interaction if it exists
+    if self.activeStashInteraction then
+        RemoveInteraction(self.activeStashInteraction)
+        self.activeStashInteraction = nil
+    end
+    
+    if self.currentGang and self.currentGang.stash_coords then
+        local coords = self.currentGang.stash_coords
+        
+        if Config.Debug then
+            DebugPrint('[Handler Client] Updating stash interaction. Coords type: ' .. type(coords))
+        end
+
+        -- Ensure coords is a vector3 or table with x,y,z
+        if (type(coords) == 'table' or type(coords) == 'vector3') and coords.x and coords.y and coords.z then
+            local vecCoords = vector3(coords.x, coords.y, coords.z)
+            local interactionId = 'gang_stash_' .. (self.currentGang.name or 'unknown')
+            
+            if Config.Debug then
+                DebugPrint('[Handler Client] Adding interaction at: ' .. vecCoords)
+            end
+
+            AddInteraction(interactionId, {
+                label = '[E] - Open Stash',
+                coords = vecCoords,
+                distance = 2.0,
+                onInteract = function()
+                    if self:HasPermission('access_stash') then
+                        exports.ox_inventory:openInventory('stash', 'gang_' .. self.currentGang.id)
+                    else
+                        lib.notify({
+                            title = 'Error',
+                            description = 'You do not have permission to access the stash',
+                            type = 'error'
+                        })
+                    end
+                end
+            })
+            
+            self.activeStashInteraction = interactionId
+
+            -- Start marker thread
+            if not self.stashMarkerThreadRunning then
+                self.stashMarkerThreadRunning = true
+                CreateThread(function()
+                    while self.currentGang and self.currentGang.stash_coords do
+                        local sleep = 1000
+                        local playerCoords = GetEntityCoords(PlayerPedId())
+                        local stashCoords = vector3(self.currentGang.stash_coords.x, self.currentGang.stash_coords.y, self.currentGang.stash_coords.z)
+                        local dist = #(playerCoords - stashCoords)
+
+                        if dist < 10.0 then
+                            sleep = 0
+                            DrawMarker(2, stashCoords.x, stashCoords.y, stashCoords.z + 0.2, 0.0, 0.0, 0.0, 0.0, 180.0, 0.0, 0.3, 0.3, 0.3, 255, 255, 255, 200, false, true, 2, false, nil, nil, false)
+                            DrawMarker(29, stashCoords.x, stashCoords.y, stashCoords.z + 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 72, 187, 120, 200, false, true, 2, false, nil, nil, false)
+                        end
+                        Wait(sleep)
+                    end
+                    self.stashMarkerThreadRunning = false
+                end)
+            end
+        else
+            if Config.Debug then
+                DebugPrint('[Handler Client] Invalid stash coords format. Type: ' .. type(coords))
+            end
+        end
+    else
+        if Config.Debug then
+            if not self.currentGang then
+                DebugPrint('[Handler Client] No gang data found (self.currentGang is nil)')
+            else
+                DebugPrint('[Handler Client] No stash coords found for gang: ' .. (self.currentGang.label or 'unknown'))
+                DebugPrint('[Handler Client] stash_coords value: ' .. tostring(self.currentGang.stash_coords))
+            end
+        end
+    end
 end
 
 function Handler:GetCurrentGang()
@@ -389,6 +488,12 @@ RegisterNUICallback('serverManagement:createGang', function(data, cb)
                     message = 'Gang has been successfully created!'
                 }
             })
+            SendNUIMessage({
+                action = 'serverManagement:gangCreated',
+                data = {
+                    gangId = result
+                }
+            })
         else
             local errorMessages = {
                 player_not_online = 'Owner ID is not online or invalid',
@@ -581,6 +686,91 @@ RegisterNUICallback('cancelGangWarInvite', function(data, cb)
     cb({ success = success, result = result })
 end)
 
+function Handler:StartStashPlacement(gangId)
+    SetNuiFocus(false, false)
+    -- Small delay to ensure NUI focus is fully cleared before checking controls
+    Wait(200)
+    
+    if not gangId then
+        lib.notify({
+            title = 'Error',
+            description = 'Invalid gang ID for stash placement',
+            type = 'error'
+        })
+        return
+    end
+    
+    local placing = true
+    local coords = GetEntityCoords(PlayerPedId())
+    
+    lib.showTextUI('Press [Enter] to confirm placement  \nPress [Backspace] to cancel', {
+        position = "top-center",
+        icon = "box",
+        style = {
+            borderRadius = 0,
+            backgroundColor = '#48BB78',
+            color = 'white'
+        }
+    })
+
+    CreateThread(function()
+        while placing do
+            -- Disable Enter key in game to prevent other interactions while placing
+            DisableControlAction(0, 191, true)
+            DisableControlAction(0, 18, true)
+            DisableControlAction(0, 201, true)
+            
+            local hit, _, endCoords, _, _ = lib.raycast.cam(1, PlayerPedId())
+            
+            if hit then
+                coords = endCoords
+            end
+            
+            DrawMarker(2, coords.x, coords.y, coords.z + 0.2, 0.0, 0.0, 0.0, 0.0, 180.0, 0.0, 0.3, 0.3, 0.3, 255, 255, 255, 200, false, true, 2, false, nil, nil, false)
+            DrawMarker(29, coords.x, coords.y, coords.z + 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 72, 187, 120, 200, false, true, 2, false, nil, nil, false)
+            
+            -- Check for disabled controls since we disabled them
+            if IsDisabledControlJustPressed(0, 191) or IsDisabledControlJustPressed(0, 18) or IsDisabledControlJustPressed(0, 201) then -- Enter
+                placing = false
+                lib.hideTextUI()
+                
+                lib.callback('trase_gangs:server:admin:updateGangStash', false, function(success, result)
+                    if success then
+                        lib.notify({
+                            title = 'Stash Placed',
+                            description = 'Gang stash location has been updated',
+                            type = 'success'
+                        })
+                        
+                        -- Re-open the menu
+                        TriggerEvent('trase_gangs:client:openServerManagement')
+                    else
+                        lib.notify({
+                            title = 'Error',
+                            description = result or 'Failed to update stash',
+                            type = 'error'
+                        })
+                        TriggerEvent('trase_gangs:client:openServerManagement')
+                    end
+                end, gangId, coords)
+            end
+            
+            if IsControlJustPressed(0, 177) then -- Backspace
+                placing = false
+                lib.hideTextUI()
+                TriggerEvent('trase_gangs:client:openServerManagement')
+            end
+            
+            Wait(0)
+        end
+    end)
+end
+
+RegisterNUICallback('serverManagement:placeStash', function(data, cb)
+    Handler:StartStashPlacement(data.gangId)
+    cb('ok')
+end)
+
 Handler:Init()
 
 CreateThread(function()
@@ -591,7 +781,7 @@ end)
 exports('GetClientHandler', function()
     return Handler
 end)
- 
+
 RegisterNUICallback('leaderboard:getAll', function(data, cb)
     local result = lib.callback.await('trase_gangs:server:getLeaderboards', false, { limit = (data and data.limit) or 25 })
     cb(result or { drugzones = {}, turfs = {}, gangwars = {}, reputation = {} })
@@ -601,5 +791,25 @@ RegisterNUICallback('leaderboard:closeUI', function(_, cb)
     SetNuiFocus(false, false)
     cb(1)
 end)
+
+RegisterNUICallback('fetchTheme', function(_, cb)
+    if Config.UI and Config.UI.Colors then
+        cb(Config.UI.Colors)
+    else
+        cb({})
+    end
+end)
+
+RegisterCommand('debuggang', function()
+    if Handler.currentGang then
+        print('^2[DebugGang] ^7Current Gang: ' .. (Handler.currentGang.label or 'Unknown') .. ' (ID: ' .. (Handler.currentGang.id or 'nil') .. ')')
+        print('^2[DebugGang] ^7Stash Coords: ' .. json.encode(Handler.currentGang.stash_coords))
+        if Handler.currentGang.stash_coords then
+            print('^2[DebugGang] ^7Coords Type: ' .. type(Handler.currentGang.stash_coords))
+        end
+    else
+        print('^2[DebugGang] ^7Not in a gang or gang data not loaded.')
+    end
+end, false)
 
 return Handler

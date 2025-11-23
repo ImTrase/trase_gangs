@@ -1,3 +1,4 @@
+if not Config.Features.Turfs.Enabled then return end
 local Turfs = lib.class('Turfs')
 local ActivityOverlay = require('client.activity_overlay')
 
@@ -118,7 +119,7 @@ function Turfs:startTurf(turfData)
 			local c = Config.Features.Turfs.ActiveMarkerColor
 			DrawMarker(1, turfData.coords.x, turfData.coords.y, turfData.coords.z-1.0,
 				0.0,0.0,0.0, 0.0,0.0,0.0,
-				turfData.radius*2.0, turfData.radius*2.0, 1.5,
+				turfData.radius*2.0, turfData.radius*2.0, 50.0,
 				c.r,c.g,c.b,c.a,
 				false,false,2,false,nil,nil,false)
 		end
@@ -142,7 +143,7 @@ function Turfs:showOverlay()
 		leaderboard[#leaderboard+1] = {
 			position = #leaderboard+1,
 			name = gData.name,
-			value = gData.kills..' Kills',
+			value = (gData.playerCount or 0)..' Alive',
 			color = '#2563eb'
 		}
 	end
@@ -154,7 +155,7 @@ function Turfs:showOverlay()
 	for i,e in ipairs(leaderboard) do e.position = i end
 	self.overlay:Show({
 		title = self.activeTurf.name or 'TURF',
-		description = 'Compete for control. Highest kills wins.',
+		description = 'Compete for control. Most alive members wins.',
 		stats = {},
 		leaderboard = leaderboard,
 		showTimer = true,
@@ -186,6 +187,15 @@ function Turfs:registerEvents()
 	end)
 	RegisterNetEvent('trase_gangs:turfs:playerKill', function()
 		self:updateOverlay()
+	end)
+	AddEventHandler('gameEventTriggered', function(name, args)
+		if name == 'CEventNetworkEntityDamage' then
+			local victim = args[1]
+			local isFatal = args[6] == 1
+			if self.isInTurf and victim == PlayerPedId() and isFatal then
+				TriggerServerEvent('trase_gangs:turfs:playerDied')
+			end
+		end
 	end)
 end
 

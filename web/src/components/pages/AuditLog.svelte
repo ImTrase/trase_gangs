@@ -67,9 +67,18 @@
     }
   }
 
-  function formatDate(dateString: string): string {
+  function formatDate(dateString: string | number): string {
     if (!dateString) return 'Unknown';
-    const date = new Date(dateString);
+    
+    let date: Date;
+    if (typeof dateString === 'number' || (typeof dateString === 'string' && /^\d+$/.test(dateString))) {
+        date = new Date(Number(dateString));
+    } else {
+        date = new Date(dateString);
+    }
+
+    if (isNaN(date.getTime())) return 'Unknown';
+
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const seconds = Math.floor(diff / 1000);

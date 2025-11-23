@@ -16,39 +16,102 @@ end
 
 function Turfs:StartTurf(turfName, turfCfg)
 	if self.activeTurf then return false, 'turf_already_active' end
+	if self.isStarting then return false, 'turf_starting' end
 	if not turfCfg then return false, 'turf_not_found' end
 
-	if Config.Debug then print('[Turfs] Starting turf: '..turfName) end
+	if Config.Debug then print('[Turfs] Starting turf sequence: '..turfName) end
 
-	self.activeTurf = turfName
-	self.turfData = {
-		name = turfName,
-		coords = turfCfg.coords,
-		radius = turfCfg.radius,
-		startTime = os.time(),
-                duration = Config.Features.Turfs.Duration,
-                gangs = {},
-                players = {},
-                playersInside = {},
-		winner = nil
-	}
+	self.isStarting = true
+	if AlertServer then
+		AlertServer(-1, turfName .. " Turf is starting in 10 Seconds get there now and take it over")
+	end
 
-	TriggerClientEvent('trase_gangs:turfs:start', -1, {
-		name = turfName,
-		coords = turfCfg.coords,
-		radius = turfCfg.radius,
-		duration = self.turfData.duration
-	})
+	SetTimeout(10000, function()
+		self.isStarting = false
+		if self.activeTurf then return end
 
-	SetTimeout(self.turfData.duration * 1000, function()
-		self:EndTurf()
+		self.activeTurf = turfName
+		self.turfData = {
+			name = turfName,
+			coords = turfCfg.coords,
+			radius = turfCfg.radius,
+			startTime = os.time(),
+			duration = Config.Features.Turfs.Duration,
+			gangs = {},
+			players = {},
+			playersInside = {},
+			winner = nil
+		}
+
+		if AlertServer then
+			AlertServer(-1, turfName .. " Turf has started!")
+		end
+
+		TriggerClientEvent('trase_gangs:turfs:start', -1, {
+			name = turfName,
+			coords = turfCfg.coords,
+			radius = turfCfg.radius,
+			duration = self.turfData.duration
+		})
+
+		SetTimeout(self.turfData.duration * 1000, function()
+			self:EndTurf()
+		end)
 	end)
 
-	return true, self.turfData
+	return true, { message = "Turf starting in 10 seconds" }
 end
 
 function Turfs:EndTurf()
 	if not self.activeTurf then return false, 'no_active_turf' end
+	
+	-- Calculate winner based on most alive members inside
+	local winnerGangId = nil
+	local maxAlive = -1
+	local tied = false
+
+	for gid, _ in pairs(self.turfData.gangs) do
+		local aliveCount = self:CountGangPlayers(gid)
+		if aliveCount > maxAlive then
+			maxAlive = aliveCount
+			winnerGangId = gid
+			tied = false
+		elseif aliveCount == maxAlive then
+			tied = true
+		end
+	end
+
+	if winnerGangId and maxAlive > 0 and not tied then
+		local winnerName = self.turfData.gangs[winnerGangId].name
+		if Config.Debug then print('[Turfs] Winner: '..winnerName..' with '..maxAlive..' alive members') end
+		
+		local Handler = exports['trase_gangs']:GetHandler()
+		if Handler then
+			Handler:UpdateGangStats(winnerGangId, 'turf_wins', 1)
+			for gid, _ in pairs(self.turfData.gangs) do
+				if gid ~= winnerGangId then
+					Handler:UpdateGangStats(gid, 'turf_losses', 1)
+				end
+			end
+		end
+
+		if AlertServer then
+			AlertServer(-1, "Turf " .. self.activeTurf .. " ended! Winner: " .. winnerName)
+		end
+
+		TriggerClientEvent('trase_gangs:turfs:winner', -1, {
+			gangId = winnerGangId,
+			gangName = winnerName,
+			aliveCount = maxAlive
+		})
+	else
+		if Config.Debug then print('[Turfs] No winner (tie or no alive members)') end
+		if AlertServer then
+			AlertServer(-1, "Turf " .. self.activeTurf .. " ended in a tie or no winner!")
+		end
+		TriggerClientEvent('trase_gangs:turfs:winner', -1, nil)
+	end
+
 	if Config.Debug then print('[Turfs] Ending turf: '..self.activeTurf) end
 	TriggerClientEvent('trase_gangs:turfs:end', -1)
 	self.activeTurf = nil
@@ -67,7 +130,9 @@ function Turfs:PlayerEnter(src)
 
 	self.turfData.playersInside[src] = true
 	if not self.turfData.players[src] then
-		self.turfData.players[src] = { kills = 0, gangId = gangId, identifier = ident }
+		self.turfData.players[src] = { kills = 0, gangId = gangId, identifier = ident, isDead = false }
+	else
+		self.turfData.players[src].isDead = false -- Reset death status on re-entry
 	end
 
 	if gangId and not self.turfData.gangs[gangId] then
@@ -89,9 +154,28 @@ function Turfs:PlayerLeave(src)
 	local pdata = self.turfData.players[src]
 	if pdata and pdata.gangId and self.turfData.gangs[pdata.gangId] then
 		self.turfData.gangs[pdata.gangId].players[src] = nil
+		-- Check if gang has any alive players left
+		if self:CountGangPlayers(pdata.gangId) == 0 then
+			self.turfData.gangs[pdata.gangId] = nil
+		end
 	end
 	self:BroadcastStats()
 	if Config.Debug then print(('[Turfs] Player %d left turf'):format(src)) end
+end
+
+function Turfs:PlayerDied(src)
+	if not self.activeTurf then return end
+	local pdata = self.turfData.players[src]
+	if pdata then
+		pdata.isDead = true
+		if pdata.gangId and self.turfData.gangs[pdata.gangId] then
+			-- Check if gang has any alive players left
+			if self:CountGangPlayers(pdata.gangId) == 0 then
+				self.turfData.gangs[pdata.gangId] = nil
+			end
+		end
+		self:BroadcastStats()
+	end
 end
 
 function Turfs:RecordKill(killer, victim)
@@ -113,7 +197,12 @@ function Turfs:CountGangPlayers(gid)
 	local g = self.turfData.gangs[gid]
 	if not g then return 0 end
 	local c = 0
-	for _ in pairs(g.players) do c = c + 1 end
+	for src, _ in pairs(g.players) do
+		local p = self.turfData.players[src]
+		if p and not p.isDead and self.turfData.playersInside[src] then
+			c = c + 1
+		end
+	end
 	return c
 end
 
@@ -154,6 +243,10 @@ end)
 
 RegisterNetEvent('trase_gangs:turfs:playerLeave', function()
 	Turfs:PlayerLeave(source)
+end)
+
+RegisterNetEvent('trase_gangs:turfs:playerDied', function()
+	Turfs:PlayerDied(source)
 end)
 
 RegisterNetEvent('trase_gangs:turfs:recordKill', function(victimId)

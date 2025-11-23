@@ -24,42 +24,57 @@ function Drugzones:StartZone(zoneName, zoneConfig)
     if self.activeZone then
         return false, 'zone_already_active'
     end
+    if self.isStarting then return false, 'zone_starting' end
 
     if Config.Debug then
-        DebugPrint('[Drugzones Server] Starting drug zone: ' .. zoneName)
+        DebugPrint('[Drugzones Server] Starting drug zone sequence: ' .. zoneName)
     end
 
-    self.activeZone = zoneName
-    self.zoneData = {
-        name = zoneName,
-        coords = zoneConfig.coords,
-        radius = zoneConfig.radius,
-        startTime = os.time(),
-        duration = Config.Features.Drugzones.Duration,
-        gangs = {},
-        players = {},
-        playersInside = {},
-        winner = nil
-    }
+    self.isStarting = true
+    if AlertServer then
+        AlertServer(-1, zoneName .. " DrugZone is starting in 10 Seconds get there now and take it over")
+    end
 
-    TriggerClientEvent('trase_gangs:drugzone:start', -1, {
-        name = zoneName,
-        coords = zoneConfig.coords,
-        radius = zoneConfig.radius,
-        duration = Config.Features.Drugzones.Duration
-    })
+    SetTimeout(10000, function()
+        self.isStarting = false
+        if self.activeZone then return end
 
-    self:StartPointAccumulation()
+        self.activeZone = zoneName
+        self.zoneData = {
+            name = zoneName,
+            coords = zoneConfig.coords,
+            radius = zoneConfig.radius,
+            startTime = os.time(),
+            duration = Config.Features.Drugzones.Duration,
+            gangs = {},
+            players = {},
+            playersInside = {},
+            winner = nil
+        }
 
-    SetTimeout(Config.Features.Drugzones.Duration * 1000, function()
-        self:EndZone()
+        if AlertServer then
+            AlertServer(-1, zoneName .. " DrugZone has started!")
+        end
+
+        TriggerClientEvent('trase_gangs:drugzone:start', -1, {
+            name = zoneName,
+            coords = zoneConfig.coords,
+            radius = zoneConfig.radius,
+            duration = Config.Features.Drugzones.Duration
+        })
+
+        self:StartPointAccumulation()
+
+        SetTimeout(Config.Features.Drugzones.Duration * 1000, function()
+            self:EndZone()
+        end)
+
+        if Config.Debug then
+            DebugPrint('[Drugzones Server] Drug zone started successfully')
+        end
     end)
 
-    if Config.Debug then
-        DebugPrint('[Drugzones Server] Drug zone started successfully')
-    end
-
-    return true, self.zoneData
+    return true, { message = "DrugZone starting in 10 seconds" }
 end
 
 function Drugzones:EndZone()
@@ -103,8 +118,11 @@ function Drugzones:PlayerEnterZone(playerId)
         self.zoneData.players[playerId] = {
             kills = 0,
             gangId = gangId,
-            identifier = identifier
+            identifier = identifier,
+            isDead = false
         }
+    else
+        self.zoneData.players[playerId].isDead = false
     end
 
     if gangId and not self.zoneData.gangs[gangId] then
@@ -142,6 +160,10 @@ function Drugzones:PlayerLeaveZone(playerId)
         local gangData = self.zoneData.gangs[playerData.gangId]
         if gangData then
             gangData.players[playerId] = nil
+            -- Remove gang if no alive players AND no points
+            if self:CountGangPlayersInZone(playerData.gangId) == 0 and gangData.points == 0 then
+                self.zoneData.gangs[playerData.gangId] = nil
+            end
         end
     end
 
@@ -149,6 +171,25 @@ function Drugzones:PlayerLeaveZone(playerId)
 
     if Config.Debug then
         DebugPrint(('[Drugzones Server] Player %d left zone'):format(playerId))
+    end
+end
+
+function Drugzones:PlayerDied(playerId)
+    if not self.activeZone then return end
+
+    local playerData = self.zoneData.players[playerId]
+    if playerData then
+        playerData.isDead = true
+        if playerData.gangId then
+            local gangData = self.zoneData.gangs[playerData.gangId]
+            if gangData then
+                -- Remove gang if no alive players AND no points
+                if self:CountGangPlayersInZone(playerData.gangId) == 0 and gangData.points == 0 then
+                    self.zoneData.gangs[playerData.gangId] = nil
+                end
+            end
+        end
+        self:BroadcastStats()
     end
 end
 
@@ -233,8 +274,11 @@ function Drugzones:CountGangPlayersInZone(gangId)
     local count = 0
     local gangData = self.zoneData.gangs[gangId]
     if gangData and gangData.players then
-        for _ in pairs(gangData.players) do
-            count = count + 1
+        for playerId, _ in pairs(gangData.players) do
+            local p = self.zoneData.players[playerId]
+            if p and not p.isDead and self.zoneData.playersInside[playerId] then
+                count = count + 1
+            end
         end
     end
     return count
@@ -304,6 +348,20 @@ function Drugzones:DeclareWinner(gangId)
         ))
     end
 
+    if AlertServer then
+        AlertServer(-1, "DrugZone " .. self.activeZone .. " ended! Winner: " .. gangName)
+    end
+
+    local Handler = exports['trase_gangs']:GetHandler()
+    if Handler then
+        Handler:UpdateGangStats(gangId, 'drugzone_wins', 1)
+        for gid, _ in pairs(self.zoneData.gangs) do
+            if gid ~= gangId then
+                Handler:UpdateGangStats(gid, 'drugzone_losses', 1)
+            end
+        end
+    end
+
     TriggerClientEvent('trase_gangs:drugzone:winner', -1, {
         gangId = gangId,
         gangName = gangName,
@@ -341,6 +399,11 @@ end)
 RegisterNetEvent('trase_gangs:drugzone:recordKill', function(victimId)
     local source = source
     Drugzones:RecordKill(source, victimId)
+end)
+
+RegisterNetEvent('trase_gangs:drugzone:playerDied', function()
+    local source = source
+    Drugzones:PlayerDied(source)
 end)
 
 if Config.Debug then

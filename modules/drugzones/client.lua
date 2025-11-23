@@ -1,3 +1,4 @@
+if not Config.Features.Drugzones.Enabled then return end
 local Drugzones = lib.class('Drugzones')
 local ActivityOverlay = require('client.activity_overlay')
 
@@ -29,7 +30,8 @@ function Drugzones:spawnNPC(zoneName, npcData)
 
     lib.requestModel(npcData.model, 10000)
 
-    local ped = CreatePed(4, GetHashKey(npcData.model), npcData.coords.x, npcData.coords.y, npcData.coords.z, npcData.coords.w, false, true)
+    print('made it here')
+    local ped = CreatePed(4, GetHashKey(npcData.model), npcData.coords.x, npcData.coords.y, npcData.coords.z, npcData.coords.w, false, false)
 
     SetEntityAsMissionEntity(ped, true, true)
     SetPedFleeAttributes(ped, 0, false)
@@ -434,6 +436,29 @@ function Drugzones:registerEvents()
             type = 'success',
             duration = 7000
         })
+    end)
+
+    AddEventHandler('gameEventTriggered', function(name, args)
+        if name == 'CEventNetworkEntityDamage' then
+            local victim = args[1]
+            local attacker = args[2]
+            local isFatal = args[6] == 1
+
+            -- If we are the victim and died, notify server of our death
+            if self.isInDrugZone and victim == PlayerPedId() and isFatal then
+                self:onDeath()
+                TriggerServerEvent('trase_gangs:drugzone:playerDied')
+            end
+
+            -- If we are the attacker and killed another player while in the drug zone, record the kill
+            if self.activeDrugZone and attacker == PlayerPedId() and IsPedAPlayer(victim) and isFatal then
+                local victimId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(victim))
+                if victimId and victimId > 0 then
+                    TriggerServerEvent('trase_gangs:drugzone:recordKill', victimId)
+                    if Config.Debug then print('[Drugzones] Recorded kill against playerId:', victimId) end
+                end
+            end
+        end
     end)
 end
 

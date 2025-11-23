@@ -66,9 +66,21 @@
     }
   });
 
-  function formatDate(dateString: string): string {
+  function formatDate(dateString: string | number): string {
     if (!dateString) return 'Unknown';
+    
+    // If it's a number or a string of digits, treat as timestamp
+    if (typeof dateString === 'number' || (typeof dateString === 'string' && /^\d+$/.test(dateString))) {
+        return new Date(Number(dateString)).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+    }
+
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Unknown';
+    
     return date.toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'short', 

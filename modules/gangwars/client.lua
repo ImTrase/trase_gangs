@@ -30,9 +30,15 @@ function GangWars:showOverlay()
 		return av > bv
 	end)
 	for i,e in ipairs(leaderboard) do e.position = i end
+
+	local desc = 'First to '..self.data.targetKills..' kills wins'
+	if self.data.wager and tonumber(self.data.wager) > 0 then
+		desc = desc .. ' | Wager: $' .. self.data.wager
+	end
+
 	self.overlay:Show({
 		title = 'GANG WAR',
-		description = 'First to '..self.data.targetKills..' kills wins',
+		description = desc,
 		stats = {},
 		leaderboard = leaderboard,
 		showTimer = false
@@ -43,6 +49,7 @@ function GangWars:update(payload)
 	if not self.active then return end
 	if payload.kills then self.kills = payload.kills end
 	if payload.targetKills then self.data.targetKills = payload.targetKills end
+	if payload.wager then self.data.wager = payload.wager end
 	self:showOverlay()
 end
 
@@ -70,7 +77,7 @@ function GangWars:startEnemyMarkers()
 				if gid and gid ~= myGangId and (gid == self.data.gang1Id or gid == self.data.gang2Id) then
 					local ped = GetPlayerPed(id)
 					local coords = GetEntityCoords(ped)
-					DrawMarker(25, coords.x, coords.y, coords.z-1.0, 0.0,0.0,0.0, 0.0,0.0,0.0, 0.3,0.3,0.2, 255,0,0,160, false,false,2,false,nil,nil,false)
+					DrawMarker(1, coords.x, coords.y, coords.z-1.0, 0.0,0.0,0.0, 0.0,0.0,0.0, 1.0,1.0,0.2, 255,0,0,160, false,false,2,false,nil,nil,false)
 				end
 			end
 			::continue::
@@ -87,6 +94,17 @@ function GangWars:registerEvents()
 	end)
 	RegisterNetEvent('trase_gangs:gangwars:end', function(data)
 		self:endWar(data)
+	end)
+	AddEventHandler('gameEventTriggered', function(name, args)
+		if name == 'CEventNetworkEntityDamage' then
+			local victim = args[1]
+			local attacker = args[2]
+			local isFatal = args[6] == 1
+			if self.active and attacker == PlayerPedId() and IsPedAPlayer(victim) and isFatal then
+				local victimId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(victim))
+				TriggerServerEvent('trase_gangs:gangwars:recordKill', victimId)
+			end
+		end
 	end)
 end
 

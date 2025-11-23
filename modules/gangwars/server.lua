@@ -20,40 +20,72 @@ local function getPlayerGang(src)
 	return g.id, (g.label or g.name or ('Gang '..tostring(g.id)))
 end
 
+local function GetSourceFromIdentifier(targetIdentifier)
+    local players = GetPlayers()
+    for _, src in ipairs(players) do
+        local ids = GetPlayerIdentifiers(src)
+        for _, id in ipairs(ids) do
+            if id == targetIdentifier then
+                return tonumber(src)
+            end
+        end
+    end
+    return nil
+end
+
 function GangWars:Start(gang1Id, gang2Id, opts)
 	if self.active then return false, 'war_already_active' end
 	if not gang1Id or not gang2Id or gang1Id == gang2Id then return false, 'invalid_gangs' end
+	-- Normalize IDs to numbers to avoid key mismatch between strings and numbers
+	gang1Id = tonumber(gang1Id)
+	gang2Id = tonumber(gang2Id)
+	if not gang1Id or not gang2Id or gang1Id == gang2Id then
+		print('[GangWars] Start called with invalid gang IDs:', tostring(gang1Id), tostring(gang2Id))
+		return false, 'invalid_gangs'
+	end
 
 	local target = (opts and opts.targetKills) or Config.Features.GangWars.TargetKills or 50
+    local wager = (opts and opts.wager) or 0
 
 	self.active = true
+	print('[GangWars] Starting war between ' .. tostring(gang1Id) .. ' and ' .. tostring(gang2Id) .. ' targetKills: ' .. tostring(target))
 	local g1Label = (Handler and Handler.gangs and Handler.gangs[gang1Id] and (Handler.gangs[gang1Id].label or Handler.gangs[gang1Id].name)) or ('Gang '..tostring(gang1Id))
 	local g2Label = (Handler and Handler.gangs and Handler.gangs[gang2Id] and (Handler.gangs[gang2Id].label or Handler.gangs[gang2Id].name)) or ('Gang '..tostring(gang2Id))
 	self.data = {
 		startedAt = os.time(),
-		gangs = {
-			[gang1Id] = { name = (opts and opts.gang1Name) or g1Label, kills = 0, players = {} },
-			[gang2Id] = { name = (opts and opts.gang2Name) or g2Label, kills = 0, players = {} }
-		},
-		targetKills = target
+		gangs = {},
+		targetKills = target,
+        wager = wager
 	}
+	-- Ensure keys are numeric
+	self.data.gangs[gang1Id] = { name = (opts and opts.gang1Name) or g1Label, kills = 0, players = {} }
+	self.data.gangs[gang2Id] = { name = (opts and opts.gang2Name) or g2Label, kills = 0, players = {} }
 
-	for _, id in ipairs(GetPlayers()) do
-		local src = tonumber(id)
-		local gid = getPlayerGang(src)
-		if gid and self.data.gangs[gid] then
-			self.data.gangs[gid].players[src] = true
-			TriggerClientEvent('trase_gangs:gangwars:start', src, {
-				gang1Id = gang1Id,
-				gang2Id = gang2Id,
-				targetKills = target,
-				names = {
-					[tonumber(gang1Id)] = self.data.gangs[gang1Id].name,
-					[tonumber(gang2Id)] = self.data.gangs[gang2Id].name,
-				}
-			})
-		end
-	end
+    -- Helper to add members from a gang
+    local function AddGangMembers(gid)
+        if Handler.gangs[gid] and Handler.gangs[gid].members then
+            for identifier, _ in pairs(Handler.gangs[gid].members) do
+                local src = GetSourceFromIdentifier(identifier)
+                if src then
+                    print('[GangWars] Adding member ' .. identifier .. ' (source: ' .. src .. ') to war for gang ' .. gid)
+                    self.data.gangs[gid].players[src] = true
+                    TriggerClientEvent('trase_gangs:gangwars:start', src, {
+                        gang1Id = gang1Id,
+                        gang2Id = gang2Id,
+                        targetKills = target,
+                        wager = wager,
+                        names = {
+                            [tonumber(gang1Id)] = self.data.gangs[gang1Id].name,
+                            [tonumber(gang2Id)] = self.data.gangs[gang2Id].name,
+                        }
+                    })
+                end
+            end
+        end
+    end
+
+    AddGangMembers(gang1Id)
+    AddGangMembers(gang2Id)
 
 	self:Broadcast()
 	return true, self.data
@@ -61,6 +93,19 @@ end
 
 function GangWars:End(winnerGangId)
 	if not self.active then return end
+	
+	if winnerGangId then
+		local Handler = exports['trase_gangs']:GetHandler()
+		if Handler then
+			Handler:UpdateGangStats(winnerGangId, 'gangwar_wins', 1)
+			for gid, _ in pairs(self.data.gangs) do
+				if gid ~= winnerGangId then
+					Handler:UpdateGangStats(gid, 'gangwar_losses', 1)
+				end
+			end
+		end
+	end
+
 	for gid, g in pairs(self.data.gangs) do
 		for src, _ in pairs(g.players) do
 			TriggerClientEvent('trase_gangs:gangwars:end', src, { winner = winnerGangId })
@@ -72,7 +117,7 @@ end
 
 function GangWars:Broadcast()
 	if not self.active then return end
-	local payload = { kills = {}, names = {}, targetKills = self.data.targetKills }
+	local payload = { kills = {}, names = {}, targetKills = self.data.targetKills, wager = self.data.wager }
 	for gid, g in pairs(self.data.gangs) do
 		payload.kills[gid] = g.kills
 		payload.names[gid] = g.name
@@ -93,6 +138,7 @@ function GangWars:OnJoin(src)
 			gang1Id = (next(self.data.gangs)),
 			gang2Id = (function(t) for k in pairs(t) do if k ~= gid then return k end end end)(self.data.gangs),
 			targetKills = self.data.targetKills,
+            wager = self.data.wager,
 			names = (function()
 				local n = {}
 				for id, g in pairs(self.data.gangs) do n[id] = g.name end
@@ -132,6 +178,9 @@ lib.callback.register('trase_gangs:gangwars:isActive', function(source)
 end)
 
 RegisterNetEvent('trase_gangs:gangwars:accept', function(gang1Id, gang2Id, targetKills)
+	gang1Id = tonumber(gang1Id)
+	gang2Id = tonumber(gang2Id)
+	print('[GangWars] Received accept event, starting war for', tostring(gang1Id), tostring(gang2Id), 'target', tostring(targetKills))
 	GangWars:Start(gang1Id, gang2Id, { targetKills = targetKills })
 end)
 
