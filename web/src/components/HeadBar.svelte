@@ -1,8 +1,9 @@
 <script lang="ts">
   import CloseIcon from "virtual:icons/mdi/close";
   import ListIcon from "virtual:icons/mdi/view-dashboard";
-  export let title = "Dashboard";
-  export let subtitle = "Quick overview & actions";
+  import { t } from '../utils/translate';
+  export let title = t('headbar_default_title', 'Dashboard');
+  export let subtitle = t('headbar_default_subtitle', 'Quick overview & actions');
   export let onClose: () => void = () => {};
 </script>
 

@@ -4,6 +4,7 @@
 
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { t } from '../utils/translate';
   import ListIcon from "virtual:icons/mdi/view-dashboard";
 
   export let items: NavItem[] = [];
@@ -23,13 +24,13 @@
   <div class="brand">
     <div class="brand-ico"><ListIcon /></div>
     <div>
-      <h3>Dashboard</h3>
-      <p>Manage your settings.</p>
+      <h3>{t('sidebar_brand_title', 'Dashboard')}</h3>
+      <p>{t('sidebar_brand_subtitle', 'Manage your settings.')}</p>
     </div>
   </div>
 
   <div>
-    <p class="nav-head">Overview</p>
+    <p class="nav-head">{t('sidebar_nav_overview', 'Overview')}</p>
     {#each items as n}
       <button
         class="nav-item {active === n.key ? 'active' : ''}"
@@ -40,7 +41,7 @@
         <span class="ico"><svelte:component this={n.icon} /></span>
         <span>{n.label}</span>
         {#if n.key === 'vip' && !isVIP}
-          <span class="vip-badge">VIP Only</span>
+          <span class="vip-badge">{t('sidebar_vip_only', 'VIP Only')}</span>
         {/if}
       </button>
     {/each}
