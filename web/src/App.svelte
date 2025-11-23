@@ -7,6 +7,7 @@
   import Notifications from './components/Notifications.svelte';
   import { useNuiEvent } from './utils/useNuiEvent';
   import { locales } from './stores/localeStore';
+  import { t } from './utils/translate';
 
   import { onMount } from 'svelte';
   import { fetchNui } from './utils/fetchNui';
@@ -49,17 +50,17 @@
   // Timer state (disabled by default)
   let showTimer = false;
   let timerDuration = 0;
-  let timerLabel = "TIME REMAINING";
+  let timerLabel = t('activity_timer_label', 'TIME REMAINING');
 
   // Listen for NUI events to show/hide and update activity overlay
   useNuiEvent('showActivityOverlay', (data: any) => {
-    activityTitle = data.title || "ACTIVITY";
+    activityTitle = data.title || t('activity_default_title', 'ACTIVITY');
     activityDescription = data.description || "";
     activityStats = data.stats || [];
     activityLeaderboard = data.leaderboard || [];
     showTimer = data.showTimer || false;
     timerDuration = data.timerDuration || 0;
-    timerLabel = data.timerLabel || "TIME REMAINING";
+    timerLabel = data.timerLabel || t('activity_timer_label', 'TIME REMAINING');
     showActivity = true;
   });
 

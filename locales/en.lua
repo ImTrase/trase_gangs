@@ -24,5 +24,16 @@ Config.Strings['en'] = {
     ['max_ranks_reached'] = 'Maximum number of ranks reached',
 
     ['drugzone_npc_interact_ox_lib'] = '[E] - Start Drugzone',
-    ['drugzone_npc_interact_ox_target'] = 'Start Drugzone'
+    ['drugzone_npc_interact_ox_target'] = 'Start Drugzone',
+
+    ['sidebar_brand_title'] = 'Dashboard',
+    ['sidebar_brand_subtitle'] = 'Manage your settings.',
+    ['sidebar_nav_overview'] = 'Overview',
+    ['sidebar_vip_only'] = 'VIP Only',
+
+    ['headbar_default_title'] = 'Dashboard',
+    ['headbar_default_subtitle'] = 'Quick overview & actions',
+
+    ['activity_default_title'] = 'ACTIVITY',
+    ['activity_timer_label'] = 'TIME REMAINING'
 }
