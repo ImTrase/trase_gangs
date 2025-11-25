@@ -3,6 +3,7 @@
   import { fade, fly, scale } from 'svelte/transition';
   import { fetchNui } from '../../utils/fetchNui';
   import { locales } from '../../stores/localeStore';
+  import { t } from '../../utils/translate';
   
   // Icons
   import PlusIcon from "virtual:icons/mdi/plus";
@@ -39,20 +40,20 @@
 
   // Available permissions
   const availablePermissions = [
-    { id: 'invite_members', label: 'Invite Members', description: 'Can invite new members to the gang' },
-    { id: 'kick_members', label: 'Kick Members', description: 'Can remove members from the gang' },
-    { id: 'promote_members', label: 'Promote Members', description: 'Can promote members to higher ranks' },
-    { id: 'demote_members', label: 'Demote Members', description: 'Can demote members to lower ranks' },
-    { id: 'manage_ranks', label: 'Manage Ranks', description: 'Can create, edit, and delete ranks' },
-    { id: 'manage_permissions', label: 'Manage Permissions', description: 'Can modify rank permissions' },
-    { id: 'access_stash', label: 'Access Stash', description: 'Can access the gang stash' },
-    { id: 'view_audit_log', label: 'View Audit Log', description: 'Can view gang activity logs' },
-    { id: 'manage_unlocks', label: 'Manage Unlocks', description: 'Can purchase gang unlocks' },
-    { id: 'start_gangwar', label: 'Start Gang War', description: 'Can initiate gang wars' },
-    { id: 'withdraw_money', label: 'Withdraw Money', description: 'Can withdraw from gang treasury' },
-    { id: 'deposit_money', label: 'Deposit Money', description: 'Can deposit to gang treasury' },
-    { id: 'view_stats', label: 'View Statistics', description: 'Can view gang statistics' },
-    { id: 'manage_settings', label: 'Manage Settings', description: 'Can modify gang settings' },
+    { id: 'invite_members', labelKey: 'perm.invite_members', label: 'Invite Members', descriptionKey: 'perm.invite_members_desc', description: 'Can invite new members to the gang' },
+    { id: 'kick_members', labelKey: 'perm.kick_members', label: 'Kick Members', descriptionKey: 'perm.kick_members_desc', description: 'Can remove members from the gang' },
+    { id: 'promote_members', labelKey: 'perm.promote_members', label: 'Promote Members', descriptionKey: 'perm.promote_members_desc', description: 'Can promote members to higher ranks' },
+    { id: 'demote_members', labelKey: 'perm.demote_members', label: 'Demote Members', descriptionKey: 'perm.demote_members_desc', description: 'Can demote members to lower ranks' },
+    { id: 'manage_ranks', labelKey: 'perm.manage_ranks', label: 'Manage Ranks', descriptionKey: 'perm.manage_ranks_desc', description: 'Can create, edit, and delete ranks' },
+    { id: 'manage_permissions', labelKey: 'perm.manage_permissions', label: 'Manage Permissions', descriptionKey: 'perm.manage_permissions_desc', description: 'Can modify rank permissions' },
+    { id: 'access_stash', labelKey: 'perm.access_stash', label: 'Access Stash', descriptionKey: 'perm.access_stash_desc', description: 'Can access the gang stash' },
+    { id: 'view_audit_log', labelKey: 'perm.view_audit_log', label: 'View Audit Log', descriptionKey: 'perm.view_audit_log_desc', description: 'Can view gang activity logs' },
+    { id: 'manage_unlocks', labelKey: 'perm.manage_unlocks', label: 'Manage Unlocks', descriptionKey: 'perm.manage_unlocks_desc', description: 'Can purchase gang unlocks' },
+    { id: 'start_gangwar', labelKey: 'perm.start_gangwar', label: 'Start Gang War', descriptionKey: 'perm.start_gangwar_desc', description: 'Can initiate gang wars' },
+    { id: 'withdraw_money', labelKey: 'perm.withdraw_money', label: 'Withdraw Money', descriptionKey: 'perm.withdraw_money_desc', description: 'Can withdraw from gang treasury' },
+    { id: 'deposit_money', labelKey: 'perm.deposit_money', label: 'Deposit Money', descriptionKey: 'perm.deposit_money_desc', description: 'Can deposit to gang treasury' },
+    { id: 'view_stats', labelKey: 'perm.view_stats', label: 'View Statistics', descriptionKey: 'perm.view_stats_desc', description: 'Can view gang statistics' },
+    { id: 'manage_settings', labelKey: 'perm.manage_settings', label: 'Manage Settings', descriptionKey: 'perm.manage_settings_desc', description: 'Can modify gang settings' },
   ];
 
   let showCreateModal = false;
@@ -93,8 +94,8 @@
   async function createRank() {
     if (!newRankName.trim()) {
       fetchNui('trase_gangs:notify', {
-        title: 'Create Rank',
-        description: 'Please enter a rank name',
+        title: t('manageRanks.create_rank_title','Create Rank'),
+        description: t('manageRanks.enter_rank_name','Please enter a rank name'),
         type: 'error'
       });
       return;
@@ -115,8 +116,8 @@
         
         // Show success notification
         fetchNui('trase_gangs:notify', {
-          title: 'Create Rank',
-          description: 'Rank created successfully',
+          title: t('manageRanks.create_rank_title','Create Rank'),
+          description: t('manageRanks.rank_created','Rank created successfully'),
           type: 'success'
         });
         
@@ -156,16 +157,16 @@
       } else {
         console.error('[createRank] Failed:', response);
         fetchNui('trase_gangs:notify', {
-          title: 'Create Rank',
-          description: $locales[response?.result] || 'Failed to create rank: ' + (response?.result || 'unknown error'),
+          title: t('manageRanks.create_rank_title','Create Rank'),
+          description: $locales[response?.result] || (t('manageRanks.create_rank_failed','Failed to create rank: ') + (response?.result || 'unknown error')),
           type: 'error'
         });
       }
     } catch (e) {
       console.error('[createRank] Error:', e);
       fetchNui('trase_gangs:notify', {
-        title: 'Create Rank',
-        description: $locales['failed_to_create_rank'] || 'Failed to create rank: ' + e.message,
+        title: t('manageRanks.create_rank_title','Create Rank'),
+        description: $locales['failed_to_create_rank'] || (t('manageRanks.create_rank_failed','Failed to create rank: ') + e.message),
         type: 'error'
       });
     }
@@ -208,22 +209,22 @@
         expandedRankId = null;
         editingPermissions = [];
         fetchNui('trase_gangs:notify', {
-          title: 'Update Permissions',
-          description: 'Rank permissions updated successfully',
+          title: t('manageRanks.update_permissions_title','Update Permissions'),
+          description: t('manageRanks.permissions_updated','Rank permissions updated successfully'),
           type: 'success'
         });
       } else {
         fetchNui('trase_gangs:notify', {
-          title: 'Update Permissions',
-          description: 'Failed to update permissions: ' + (response?.result || 'unknown error'),
+          title: t('manageRanks.update_permissions_title','Update Permissions'),
+          description: t('manageRanks.update_permissions_failed','Failed to update permissions: ') + (response?.result || 'unknown error'),
           type: 'error'
         });
       }
     } catch (e) {
       console.error('Failed to update permissions:', e);
       fetchNui('trase_gangs:notify', {
-        title: 'Update Permissions',
-        description: 'Failed to update permissions',
+        title: t('manageRanks.update_permissions_title','Update Permissions'),
+        description: t('manageRanks.update_permissions_failed_simple','Failed to update permissions'),
         type: 'error'
       });
     }
@@ -393,7 +394,8 @@
   }
 
   function getPermissionLabel(permissionId: string): string {
-    return availablePermissions.find(p => p.id === permissionId)?.label || permissionId;
+    const found = availablePermissions.find(p => p.id === permissionId);
+    return found ? t(found.labelKey, found.label) : permissionId;
   }
 
   function getPermissionKeys(permissions: any): string[] {
@@ -414,13 +416,13 @@
     <div class="header-content">
       <ShieldIcon class="header-icon" />
       <div>
-        <h2>Manage Ranks</h2>
-        <p>Create and configure gang rank permissions</p>
+        <h2>{t('manageRanks.title','Manage Ranks')}</h2>
+        <p>{t('manageRanks.description','Create and configure gang rank permissions')}</p>
       </div>
     </div>
     <button class="create-btn" on:click={openCreateModal} in:scale={{ start: 0.8, duration: 250, delay: 100 }}>
       <PlusIcon />
-      <span>Create Rank</span>
+      <span>{t('manageRanks.create_rank_btn','Create Rank')}</span>
     </button>
   </div>
 
@@ -429,10 +431,10 @@
     <table>
       <thead>
         <tr>
-          <th>Grade</th>
-          <th>Rank Name</th>
-          <th>Permissions</th>
-          <th>Actions</th>
+          <th>{t('manageRanks.col_grade','Grade')}</th>
+          <th>{t('manageRanks.col_rank_name','Rank Name')}</th>
+          <th>{t('manageRanks.col_permissions','Permissions')}</th>
+          <th>{t('manageRanks.col_actions','Actions')}</th>
         </tr>
       </thead>
       <tbody>
@@ -447,9 +449,9 @@
             <td class="permissions-cell" on:click={() => toggleRankExpansion(rank)}>
               <div class="permissions-preview clickable">
                 {#if getPermissionKeys(rank.permissions).length === 0}
-                  <span class="no-permissions">No permissions</span>
+                  <span class="no-permissions">{t('manageRanks.no_permissions','No permissions')}</span>
                 {:else if getPermissionKeys(rank.permissions).length === availablePermissions.length}
-                  <span class="all-permissions">All permissions</span>
+                  <span class="all-permissions">{t('manageRanks.all_permissions','All permissions')}</span>
                 {:else}
                   <span class="permission-count">{getPermissionKeys(rank.permissions).length} permission{getPermissionKeys(rank.permissions).length !== 1 ? 's' : ''}</span>
                 {/if}
@@ -488,12 +490,12 @@
               <td colspan="4">
                 <div class="permissions-editor">
                   <div class="permissions-header">
-                    <h4>Configure Permissions for {rank.name}</h4>
+                    <h4>{t('manageRanks.configure_prefix','Configure Permissions for')} {rank.name}</h4>
                     <div class="permissions-actions">
-                      <button class="btn btn-secondary" on:click={cancelInlineEdit}>Cancel</button>
+                      <button class="btn btn-secondary" on:click={cancelInlineEdit}>{t('cancel','Cancel')}</button>
                       <button class="btn btn-primary" on:click={() => saveInlinePermissions(rank)}>
                         <CheckIcon />
-                        <span>Save Changes</span>
+                        <span>{t('save_changes','Save Changes')}</span>
                       </button>
                     </div>
                   </div>
@@ -506,8 +508,8 @@
                           on:change={() => toggleEditingPermission(permission.id)}
                         />
                         <div class="permission-info">
-                          <div class="permission-label">{permission.label}</div>
-                          <div class="permission-description">{permission.description}</div>
+                          <div class="permission-label">{t(permission.labelKey, permission.label)}</div>
+                          <div class="permission-description">{t(permission.descriptionKey, permission.description)}</div>
                         </div>
                       </label>
                     {/each}
@@ -527,7 +529,7 @@
   <div class="modal-overlay" on:click={closeCreateModal} transition:fade={{ duration: 200 }}>
     <div class="modal" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 250 }}>
       <div class="modal-header">
-        <h3>Create New Rank</h3>
+        <h3>{t('manageRanks.create_new_rank','Create New Rank')}</h3>
         <button class="close-btn" on:click={closeCreateModal}>
           <CloseIcon />
         </button>
@@ -535,7 +537,7 @@
       
       <div class="modal-body">
         <div class="form-group">
-          <label for="rank-name">Rank Name</label>
+          <label for="rank-name">{t('manageRanks.rank_name_label','Rank Name')}</label>
           <input 
             id="rank-name"
             type="text" 
@@ -546,7 +548,7 @@
         </div>
 
         <div class="form-group">
-          <label>Permissions ({newRankPermissions.length} selected)</label>
+          <label>{t('manageRanks.permissions_label_short','Permissions')} ({newRankPermissions.length} {t('manageRanks.selected','selected')})</label>
           <div class="permissions-grid">
             {#each availablePermissions as permission}
               <label class="permission-item">
@@ -556,8 +558,8 @@
                   on:change={() => togglePermission(permission.id)}
                 />
                 <div class="permission-info">
-                  <div class="permission-label">{permission.label}</div>
-                  <div class="permission-description">{permission.description}</div>
+                  <div class="permission-label">{t(permission.labelKey, permission.label)}</div>
+                  <div class="permission-description">{t(permission.descriptionKey, permission.description)}</div>
                 </div>
               </label>
             {/each}
@@ -566,10 +568,10 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" on:click={closeCreateModal}>Cancel</button>
+        <button class="btn btn-secondary" on:click={closeCreateModal}>{t('cancel','Cancel')}</button>
         <button class="btn btn-primary" on:click={createRank}>
           <CheckIcon />
-          <span>Create Rank</span>
+          <span>{t('manageRanks.create_rank_btn','Create Rank')}</span>
         </button>
       </div>
     </div>
@@ -581,7 +583,7 @@
   <div class="modal-overlay" on:click={closeDeleteConfirm} transition:fade={{ duration: 200 }}>
     <div class="modal small confirm-modal" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 250 }}>
       <div class="modal-header">
-        <h3>Delete Rank</h3>
+        <h3>{t('manageRanks.delete_rank','Delete Rank')}</h3>
         <button class="close-btn" on:click={closeDeleteConfirm}>
           <CloseIcon />
         </button>
@@ -593,7 +595,7 @@
             <TrashIcon />
           </div>
           <div class="confirm-text">
-            <p class="confirm-title">Are you sure you want to delete this rank?</p>
+            <p class="confirm-title">{t('manageRanks.delete_confirm','Are you sure you want to delete this rank?')}</p>
             <p class="confirm-description">
               You are about to delete the <strong>"{selectedRank.name}"</strong> rank. This action cannot be undone.
             </p>
@@ -602,10 +604,10 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" on:click={closeDeleteConfirm}>Cancel</button>
+        <button class="btn btn-secondary" on:click={closeDeleteConfirm}>{t('cancel','Cancel')}</button>
         <button class="btn btn-danger" on:click={confirmDeleteRank}>
           <TrashIcon />
-          <span>Delete Rank</span>
+          <span>{t('manageRanks.delete_rank_action','Delete Rank')}</span>
         </button>
       </div>
     </div>
@@ -617,7 +619,7 @@
   <div class="modal-overlay" on:click={closeRenameModal} transition:fade={{ duration: 200 }}>
     <div class="modal small" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 250 }}>
       <div class="modal-header">
-        <h3>Rename Rank</h3>
+        <h3>{t('manageRanks.rename_rank','Rename Rank')}</h3>
         <button class="close-btn" on:click={closeRenameModal}>
           <CloseIcon />
         </button>
@@ -625,7 +627,7 @@
       
       <div class="modal-body">
         <div class="form-group">
-          <label for="rename-input">Rank Name</label>
+          <label for="rename-input">{t('manageRanks.rank_name_label','Rank Name')}</label>
           <input 
             id="rename-input"
             type="text" 
@@ -637,10 +639,10 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" on:click={closeRenameModal}>Cancel</button>
+        <button class="btn btn-secondary" on:click={closeRenameModal}>{t('cancel','Cancel')}</button>
         <button class="btn btn-primary" on:click={renameRank}>
           <CheckIcon />
-          <span>Rename</span>
+          <span>{t('manageRanks.rename_btn','Rename')}</span>
         </button>
       </div>
     </div>

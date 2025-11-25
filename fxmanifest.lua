@@ -14,15 +14,16 @@ shared_scripts {
 }
 
 client_scripts {
-    'client/client.lua',
     'client/activity_overlay.lua',
+    'client/client.lua',
     'frameworks/**/client.lua',
     'modules/**/client.lua'
 }
 
 server_scripts {
     '@mysql-async/lib/MySQL.lua',
-    'server/server.lua',
+    'server/*.lua',
+    'modules/**/server.lua',
     'frameworks/**/server.lua'
 }
 
@@ -36,5 +37,10 @@ files {
 
 dependencies {
     'ox_lib',
-    'mysql-async'
+}
+
+escrow_ignore {
+    'config.lua',
+    'locales/*.lua',
+    'frameworks/**/*.lua',
 }

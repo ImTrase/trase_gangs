@@ -3,6 +3,7 @@
   import { cubicOut } from 'svelte/easing';
   import { useNuiEvent } from '../utils/useNuiEvent';
   import { fetchNui } from '../utils/fetchNui';
+  import { t } from '../utils/translate';
 
   import '../theme.css';
 
@@ -18,11 +19,11 @@
 
   type TabKey = 'drugzones' | 'turfs' | 'gangwars' | 'reputation';
 
-  const tabs: Array<{ key: TabKey; label: string; icon: any; color?: string }> = [
-    { key: 'drugzones', label: 'Most Drugzone Wins', icon: PillIcon },
-    { key: 'turfs', label: 'Most Turf Wins', icon: MapIcon },
-    { key: 'gangwars', label: 'Most Gang War Wins', icon: SwordsIcon },
-    { key: 'reputation', label: 'Highest REP', icon: StarIcon }
+  const tabs: Array<{ key: TabKey; labelKey: string; icon: any; color?: string }> = [
+    { key: 'drugzones', labelKey: 'leaderboard.tab_drugzones', icon: PillIcon },
+    { key: 'turfs', labelKey: 'leaderboard.tab_turfs', icon: MapIcon },
+    { key: 'gangwars', labelKey: 'leaderboard.tab_gangwars', icon: SwordsIcon },
+    { key: 'reputation', labelKey: 'leaderboard.tab_reputation', icon: StarIcon }
   ];
 
   let tab: TabKey = 'drugzones';
@@ -73,7 +74,7 @@
       class="backdrop"
       role="button"
       tabindex="0"
-      aria-label="Close overlay"
+      aria-label={t('close','Close')}
       in:fade={{ duration: 160 }}
       out:fade={{ duration: 160 }}
       on:click={(e) => e.currentTarget === e.target && closeUI()}
@@ -93,22 +94,22 @@
               <TrophyIcon class="brand-icon" />
             </div>
             <div class="brand-text">
-              <strong>Gang Leaderboards</strong>
-              <span>Top gangs by category</span>
+              <strong>{t('leaderboard.title','Gang Leaderboards')}</strong>
+              <span>{t('leaderboard.subtitle','Top gangs by category')}</span>
             </div>
           </div>
 
           <div class="nav-section">
-            <div class="nav-label">Categories</div>
-            <nav class="nav" aria-label="Leaderboard Categories">
-              {#each tabs as t}
+            <div class="nav-label">{t('leaderboard.categories','Categories')}</div>
+            <nav class="nav" aria-label={t('leaderboard.categories_aria','Leaderboard Categories')}>
+              {#each tabs as tabItem}
                 <button
-                  class="nav-item {tab === t.key ? 'active' : ''}"
-                  on:click={() => selectTab(t.key)}
-                  aria-pressed={tab === t.key}
+                  class="nav-item {tab === tabItem.key ? 'active' : ''}"
+                  on:click={() => selectTab(tabItem.key)}
+                  aria-pressed={tab === tabItem.key}
                 >
-                  <svelte:component this={t.icon} class="nav-icon" />
-                  <span>{t.label}</span>
+                  <svelte:component this={tabItem.icon} class="nav-icon" />
+                  <span>{t(tabItem.labelKey, tabItem.labelKey)}</span>
                 </button>
               {/each}
             </nav>
@@ -119,22 +120,22 @@
         <div class="main">
           <header class="topbar">
             <h1 class="page-title">
-              {tabs.find(x => x.key === tab)?.label}
+              {t(tabs.find(x => x.key === tab)?.labelKey ?? 'leaderboard.title', 'Leaderboard')}
             </h1>
-            <button class="close-btn" on:click={closeUI} aria-label="Close">
+            <button class="close-btn" on:click={closeUI} aria-label={t('close','Close')}>
               <CloseIcon class="close-icon" />
-              <span>Close</span>
+              <span>{t('close','Close')}</span>
             </button>
           </header>
 
           <main class="content" role="region" aria-live="polite">
             <div class="table">
               <div class="table-head">
-                <div class="th th-rank">#</div>
-                <div class="th th-gang">Gang</div>
-                <div class="th th-wins">Wins</div>
-                <div class="th th-rep">REP</div>
-                <div class="th th-members">Members</div>
+                <div class="th th-rank">{t('leaderboard.rank','#')}</div>
+                <div class="th th-gang">{t('leaderboard.gang','Gang')}</div>
+                <div class="th th-wins">{t('leaderboard.wins','Wins')}</div>
+                <div class="th th-rep">{t('leaderboard.rep','REP')}</div>
+                <div class="th th-members">{t('leaderboard.members','Members')}</div>
               </div>
 
               {#key tab}
@@ -150,7 +151,7 @@
                   {/each}
 
                   {#if (data[tab] || []).length === 0}
-                    <div class="empty">No data available.</div>
+                    <div class="empty">{t('leaderboard.no_data','No data available.')}</div>
                   {/if}
                 </div>
               {/key}

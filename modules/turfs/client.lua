@@ -1,6 +1,5 @@
 if not Config.Features.Turfs.Enabled then return end
 local Turfs = lib.class('Turfs')
-local ActivityOverlay = require('client.activity_overlay')
 
 function Turfs:constructor()
 	if Config.Debug then print('[Turfs] Initializing Turfs client...') end
@@ -76,22 +75,22 @@ function Turfs:startTurfAttempt(name)
 	local gangTbl = LocalPlayer.state.gang
 	if not gangTbl then
 		if lib and lib.notify then
-			lib.notify({ title = 'Turf', description = 'You must be in a gang to start a turf', type = 'error' })
+			lib.notify({ title = TranslateText('turf_title', 'Turf'), description = TranslateText('turf_no_gang', 'You must be in a gang to start a turf'), type = 'error' })
 		end
 		return
 	end
 	local success, result = lib.callback.await('trase_gangs:turfs:start', false, name)
 	if success then
 		if lib and lib.notify then
-			lib.notify({ title = 'Turf', description = 'Turf "'..name..'" started!', type = 'success' })
+			lib.notify({ title = TranslateText('turf_title', 'Turf'), description = TranslateText('turf_started', 'Turf "%s" started!'):format(name), type = 'success' })
 		end
 	else
 		local reason = tostring(result)
-		local msg = 'Failed to start turf: '..reason
-		if reason == 'no_gang' then msg = 'You must be in a gang to start a turf' end
-		if reason == 'turf_already_active' then msg = 'A turf is already active' end
+		local msg = TranslateText('turf_start_failed', 'Failed to start turf: %s'):format(reason)
+		if reason == 'no_gang' then msg = TranslateText('turf_no_gang', 'You must be in a gang to start a turf') end
+		if reason == 'turf_already_active' then msg = TranslateText('turf_already_active', 'A turf is already active') end
 		if lib and lib.notify then
-			lib.notify({ title = 'Turf', description = msg, type = 'error' })
+			lib.notify({ title = TranslateText('turf_title', 'Turf'), description = msg, type = 'error' })
 		end
 	end
 end
@@ -117,9 +116,9 @@ function Turfs:startTurf(turfData)
 		while inst.activeTurf do
 			Wait(0)
 			local c = Config.Features.Turfs.ActiveMarkerColor
-			DrawMarker(1, turfData.coords.x, turfData.coords.y, turfData.coords.z-1.0,
+			DrawMarker(1, turfData.coords.x, turfData.coords.y, turfData.coords.z-10.0,
 				0.0,0.0,0.0, 0.0,0.0,0.0,
-				turfData.radius*2.0, turfData.radius*2.0, 50.0,
+				turfData.radius*2.0, turfData.radius*2.0, 60.0,
 				c.r,c.g,c.b,c.a,
 				false,false,2,false,nil,nil,false)
 		end

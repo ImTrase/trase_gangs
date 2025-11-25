@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fade, fly } from 'svelte/transition';
   import { onMount, onDestroy } from 'svelte';
+  import { t } from '../utils/translate';
   
   // Icons
   import SkullIcon from "virtual:icons/mdi/skull";
@@ -15,7 +16,7 @@
   // Timer props
   export let showTimer = false;
   export let timerDuration = 0; // in seconds
-  export let timerLabel = "TIME REMAINING";
+  export let timerLabel = t('activity_timer_label','TIME REMAINING');
 
   let timeRemaining = timerDuration;
   let progressPercent = 100;
@@ -82,7 +83,7 @@
       <!-- My Statistics -->
       {#if myStats.length > 0}
         <div class="section">
-          <h2 class="section-title">MY STATISTICS</h2>
+          <h2 class="section-title">{t('activity.my_statistics','MY STATISTICS')}</h2>
           <div class="stats-grid">
             {#each myStats as stat, i}
               <div class="stat-card" transition:fly={{ x: -20, duration: 300, delay: 200 + (i * 50) }}>
@@ -102,7 +103,7 @@
       <!-- Leaderboard -->
       {#if leaderboard.length > 0}
         <div class="section">
-          <h2 class="section-title">LEADERBOARD</h2>
+          <h2 class="section-title">{t('activity.leaderboard','LEADERBOARD')}</h2>
           <div class="leaderboard-list">
             {#each leaderboard as entry, i}
               <div 

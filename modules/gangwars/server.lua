@@ -1,5 +1,4 @@
 local GangWars = {}
-local Handler = require 'modules.handler.server'
 GangWars.active = false
 GangWars.data = {}
 

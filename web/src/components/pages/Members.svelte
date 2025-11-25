@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '../../utils/translate';
   import { fade, fly, scale } from 'svelte/transition';
   import { fetchNui } from '../../utils/fetchNui';
   
@@ -241,8 +242,8 @@
     <div class="header-content">
       <UsersIcon class="header-icon" />
       <div>
-        <h2>Gang Members</h2>
-        <p>{onlineCount} online · {totalCount} total members</p>
+        <h2>{t('members_page_title','Gang Members')}</h2>
+        <p>{onlineCount} {t('online_short','online')} · {totalCount} {t('total_members_short','total members')}</p>
       </div>
     </div>
   </div>
@@ -252,11 +253,11 @@
     <table>
       <thead>
         <tr>
-          <th>Status</th>
-          <th>Member Name</th>
-          <th>Rank</th>
-          <th>Joined Date</th>
-          <th>Actions</th>
+          <th>{t('status_label','Status')}</th>
+          <th>{t('member_name_label','Member Name')}</th>
+          <th>{t('rank_label','Rank')}</th>
+          <th>{t('joined_label','Joined Date')}</th>
+          <th>{t('actions_label','Actions')}</th>
         </tr>
       </thead>
       <tbody>
@@ -285,7 +286,7 @@
                   <button 
                     class="action-btn promote" 
                     on:click={() => openPromoteModal(member)} 
-                    title="Promote member"
+                    title={t('promote_member_title','Promote member')}
                   >
                     <ArrowUpIcon />
                   </button>
@@ -294,7 +295,7 @@
                   <button 
                     class="action-btn demote" 
                     on:click={() => openDemoteModal(member)} 
-                    title="Demote member"
+                    title={t('demote_member_title','Demote member')}
                   >
                     <ArrowDownIcon />
                   </button>
@@ -303,7 +304,7 @@
                   <button 
                     class="action-btn kick" 
                     on:click={() => openKickModal(member)} 
-                    title="Kick member"
+                    title={t('kick_member_title','Kick member')}
                   >
                     <TrashIcon />
                   </button>
@@ -322,7 +323,7 @@
   <div class="modal-overlay" on:click={closePromoteModal} transition:fade={{ duration: 200 }}>
     <div class="modal" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 250 }}>
       <div class="modal-header">
-        <h3>Promote Member</h3>
+            <h3>{t('promote_member_title','Promote Member')}</h3>
         <button class="close-btn" on:click={closePromoteModal}>
           <CloseIcon />
         </button>
@@ -344,10 +345,10 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" on:click={closePromoteModal}>Cancel</button>
+                <button class="btn btn-secondary" on:click={closePromoteModal}>{t('cancel','Cancel')}</button>
         <button class="btn btn-primary promote-btn" on:click={promoteMember}>
           <ArrowUpIcon />
-          <span>Promote</span>
+          <span>{t('promote','Promote')}</span>
         </button>
       </div>
     </div>
@@ -359,7 +360,7 @@
   <div class="modal-overlay" on:click={closeDemoteModal} transition:fade={{ duration: 200 }}>
     <div class="modal" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 250 }}>
       <div class="modal-header">
-        <h3>Demote Member</h3>
+            <h3>{t('demote_member_title','Demote Member')}</h3>
         <button class="close-btn" on:click={closeDemoteModal}>
           <CloseIcon />
         </button>
@@ -381,10 +382,10 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" on:click={closeDemoteModal}>Cancel</button>
+        <button class="btn btn-secondary" on:click={closeDemoteModal}>{t('cancel','Cancel')}</button>
         <button class="btn btn-primary demote-btn" on:click={demoteMember}>
           <ArrowDownIcon />
-          <span>Demote</span>
+          <span>{t('demote','Demote')}</span>
         </button>
       </div>
     </div>
@@ -396,7 +397,7 @@
   <div class="modal-overlay" on:click={closeKickModal} transition:fade={{ duration: 200 }}>
     <div class="modal confirm-modal" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 250 }}>
       <div class="modal-header">
-        <h3>Kick Member</h3>
+            <h3>{t('kick_member_title','Kick Member')}</h3>
         <button class="close-btn" on:click={closeKickModal}>
           <CloseIcon />
         </button>
@@ -415,10 +416,10 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" on:click={closeKickModal}>Cancel</button>
+        <button class="btn btn-secondary" on:click={closeKickModal}>{t('cancel','Cancel')}</button>
         <button class="btn btn-danger" on:click={kickMember}>
           <TrashIcon />
-          <span>Kick Member</span>
+          <span>{t('kick_member','Kick Member')}</span>
         </button>
       </div>
     </div>

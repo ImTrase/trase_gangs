@@ -1,5 +1,4 @@
 local GangWars = lib.class('GangWars')
-local ActivityOverlay = require('client.activity_overlay')
 
 function GangWars:constructor()
 	self.active = false

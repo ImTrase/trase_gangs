@@ -1,6 +1,5 @@
 if not Config.Features.Drugzones.Enabled then return end
 local Drugzones = lib.class('Drugzones')
-local ActivityOverlay = require('client.activity_overlay')
 
 function Drugzones:constructor()
     if Config.Debug then
@@ -72,8 +71,8 @@ function Drugzones:onNPCInteract(zoneName)
     
     if hasActiveZone then
         lib.notify({
-            title = 'Drug Zone Active',
-            description = 'There is already an active drug zone: ' .. activeZoneName .. '. Please wait for it to finish.',
+            title = TranslateText('drugzone_active_title', 'Drug Zone Active'),
+            description = TranslateText('drugzone_already_active_desc', 'There is already an active drug zone: %s. Please wait for it to finish.'):format(activeZoneName),
             type = 'error'
         })
         return
@@ -83,14 +82,14 @@ function Drugzones:onNPCInteract(zoneName)
     
     if success then
         lib.notify({
-            title = 'Drug Zone Started',
-            description = 'The drug zone "' .. zoneName .. '" has been started!',
+            title = TranslateText('drugzone_started_title', 'Drug Zone Started'),
+            description = TranslateText('drugzone_started_desc', 'The drug zone "%s" has been started!'):format(zoneName),
             type = 'success'
         })
     else
         lib.notify({
-            title = 'Error',
-            description = 'Failed to start drug zone: ' .. tostring(result),
+            title = TranslateText('error', 'Error'),
+            description = TranslateText('drugzone_start_failed', 'Failed to start drug zone: %s'):format(tostring(result)),
             type = 'error'
         })
     end
@@ -229,15 +228,15 @@ function Drugzones:startDrugZone(zoneData)
 
     SetTimeout(zoneData.duration * 1000, function()
         lib.notify({
-            title = 'Drug Zone',
-            description = 'The drug zone has ended!',
+            title = TranslateText('drugzone_title', 'Drug Zone'),
+            description = TranslateText('drugzone_ended', 'The drug zone has ended!'),
             type = 'info'
         })
     end)
 
     lib.notify({
-        title = 'Drug Zone Active',
-        description = 'A drug zone has started at ' .. zoneData.name .. ' for ' .. zoneData.duration .. ' seconds!',
+        title = TranslateText('drugzone_active_title', 'Drug Zone Active'),
+        description = TranslateText('drugzone_started_info', 'A drug zone has started at %s for %s seconds!'):format(zoneData.name, tostring(zoneData.duration)),
         type = 'info'
     })
 end

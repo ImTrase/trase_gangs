@@ -180,8 +180,6 @@ function DrawText3D(x, y, z, text)
     ClearDrawOrigin()
 end
 
-require 'modules.handler.client'
-
 RegisterNUICallback('trase_gangs:notify', function(data, cb)
     SendNUIMessage({
         action = 'notify',

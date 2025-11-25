@@ -3,6 +3,7 @@
   import { fade, fly, scale } from 'svelte/transition';
   import { fetchNui } from '../../utils/fetchNui';
   import { locales } from '../../stores/localeStore';
+  import { t } from '../../utils/translate';
 
   // Icons
   import UserPlusIcon from "virtual:icons/mdi/account-plus";
@@ -161,25 +162,25 @@
     <div class="header-content">
       <UserPlusIcon class="header-icon" />
       <div>
-        <h2>Recruit Members</h2>
-        <p>{nearbyPlayers.length} nearby players</p>
+        <h2>{t('recruit.title','Recruit Members')}</h2>
+        <p>{nearbyPlayers.length} {t('recruit.nearby_players','nearby players')}</p>
       </div>
     </div>
     <div class="header-actions">
-      <button 
+        <button 
         class="action-btn refresh-btn" 
         on:click={refreshNearbyPlayers}
         disabled={isRefreshing}
-        title="Refresh nearby players"
+        title={t('recruit.refresh_title','Refresh nearby players')}
       >
         <span class="refresh-icon" class:spinning={isRefreshing}>
           <RefreshIcon />
         </span>
-        <span>Refresh</span>
+        <span>{t('refresh','Refresh')}</span>
       </button>
       <button class="invite-btn" on:click={openInviteModal}>
         <IdCardIcon />
-        <span>Invite via ID</span>
+        <span>{t('recruit.invite_via_id','Invite via ID')}</span>
       </button>
     </div>
   </div>
@@ -189,10 +190,10 @@
     <table>
       <thead>
         <tr>
-          <th>Server ID</th>
-          <th>Player Name</th>
-          <th>Distance</th>
-          <th>Action</th>
+          <th>{t('server_id','Server ID')}</th>
+          <th>{t('player_name','Player Name')}</th>
+          <th>{t('distance_label','Distance')}</th>
+          <th>{t('action_label','Action')}</th>
         </tr>
       </thead>
       <tbody>
@@ -201,8 +202,8 @@
             <td colspan="4" class="empty-state">
               <div class="empty-content">
                 <UserPlusIcon class="empty-icon" />
-                <p>No nearby players found</p>
-                <span>Try refreshing or invite by server ID</span>
+                <p>{t('recruit.empty_title','No nearby players found')}</p>
+                <span>{t('recruit.empty_action','Try refreshing or invite by server ID')}</span>
               </div>
             </td>
           </tr>
@@ -224,10 +225,10 @@
                 <button 
                   class="invite-player-btn" 
                   on:click={() => openConfirmModal(player)}
-                  title="Send gang invite"
+                  title={t('recruit.send_invite_title','Send gang invite')}
                 >
                   <SendIcon />
-                  <span>Invite</span>
+                  <span>{t('invite_btn','Invite')}</span>
                 </button>
               </td>
             </tr>
@@ -243,7 +244,7 @@
   <div class="modal-overlay" on:click={closeConfirmModal} transition:fade={{ duration: 200 }}>
     <div class="modal confirm-modal" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 250 }}>
       <div class="modal-header">
-        <h3>Confirm Invite</h3>
+        <h3>{t('recruit.confirm_invite_title','Confirm Invite')}</h3>
         <button class="close-btn" on:click={closeConfirmModal}>
           <CloseIcon />
         </button>
@@ -253,7 +254,7 @@
         <div class="confirm-content">
           <UserPlusIcon class="confirm-icon" />
           <p class="modal-description">
-            Are you sure you want to invite <strong>{selectedPlayer.name}</strong> to your gang?
+            {t('recruit.confirm_invite_prefix','Are you sure you want to invite')} <strong>{selectedPlayer.name}</strong> {t('recruit.confirm_invite_suffix','to your gang?')}
           </p>
           <div class="player-info">
             <span class="info-label">Server ID:</span>
@@ -267,10 +268,10 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" on:click={closeConfirmModal}>Cancel</button>
+        <button class="btn btn-secondary" on:click={closeConfirmModal}>{t('cancel','Cancel')}</button>
         <button class="btn btn-primary" on:click={confirmInvite}>
           <SendIcon />
-          <span>Send Invite</span>
+          <span>{t('send_invite','Send Invite')}</span>
         </button>
       </div>
     </div>
@@ -282,7 +283,7 @@
   <div class="modal-overlay" on:click={closeInviteModal} transition:fade={{ duration: 200 }}>
     <div class="modal" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 250 }}>
       <div class="modal-header">
-        <h3>Invite via Server ID</h3>
+        <h3>{t('recruit.invite_by_id_title','Invite via Server ID')}</h3>
         <button class="close-btn" on:click={closeInviteModal}>
           <CloseIcon />
         </button>
@@ -290,16 +291,16 @@
       
       <div class="modal-body">
         <p class="modal-description">
-          Enter the server ID of the player you want to invite to your gang.
+          {t('recruit.invite_by_id_desc','Enter the server ID of the player you want to invite to your gang.')}
         </p>
         
         <div class="form-group">
-          <label for="server-id">Server ID</label>
+            <label for="server-id">{t('server_id','Server ID')}</label>
           <input 
             id="server-id"
             type="number" 
             bind:value={inviteServerId} 
-            placeholder="Enter server ID..."
+            placeholder={t('recruit.placeholder_server_id','Enter server ID...')}
             min="1"
             autofocus
           />
@@ -307,10 +308,10 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" on:click={closeInviteModal}>Cancel</button>
+        <button class="btn btn-secondary" on:click={closeInviteModal}>{t('cancel','Cancel')}</button>
         <button class="btn btn-primary" on:click={inviteByServerId}>
           <SendIcon />
-          <span>Send Invite</span>
+          <span>{t('send_invite','Send Invite')}</span>
         </button>
       </div>
     </div>

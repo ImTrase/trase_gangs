@@ -3,6 +3,7 @@
   import { cubicOut } from "svelte/easing";
   import { useNuiEvent } from "../utils/useNuiEvent";
   import { fetchNui } from "../utils/fetchNui";
+  import { t } from '../utils/translate';
 
   import "../theme.css";
 
@@ -119,7 +120,7 @@
         showCreateModal = false;
       });
     } else {
-      showNotification("error", "Missing Information", "Please fill in all fields.");
+      showNotification("error", t('missing_info_title','Missing Information'), t('missing_info_desc','Please fill in all fields.'));
     }
   }
 
@@ -144,14 +145,14 @@
   }
 
   function formatDate(val: any) {
-    if (!val) return 'Unknown';
+    if (!val) return t('unknown','Unknown');
     // If it's a number or a string of digits, treat as timestamp
     if (typeof val === 'number' || (typeof val === 'string' && /^\d+$/.test(val))) {
         return new Date(Number(val)).toLocaleDateString();
     }
     // Otherwise try standard date parsing
     const d = new Date(val);
-    return isNaN(d.getTime()) ? 'Unknown' : d.toLocaleDateString();
+    return isNaN(d.getTime()) ? t('unknown','Unknown') : d.toLocaleDateString();
   }
 
   $: filteredGangs = gangs.filter(g => 
@@ -168,7 +169,7 @@
       class="backdrop"
       role="button"
       tabindex="0"
-      aria-label="Close overlay"
+      aria-label={t('close','Close')}
       in:fade={{ duration: 160 }}
       out:fade={{ duration: 160 }}
       on:click={(e) => e.currentTarget === e.target && closeUI()}
@@ -184,15 +185,15 @@
         <!-- Main Content -->
         <div class="main">
           <header class="topbar">
-            <h1 class="page-title">Manage Gangs</h1>
+            <h1 class="page-title">{t('serverManagement.title', 'Manage Gangs')}</h1>
             <div class="header-actions">
               <button class="btn btn-primary" on:click={() => showCreateModal = true}>
                 <ShieldIcon class="btn-icon" />
-                New Gang
+                {t('serverManagement.new_gang', 'New Gang')}
               </button>
-              <button class="close-btn" on:click={closeUI} aria-label="Close">
+              <button class="close-btn" on:click={closeUI} aria-label={t('close','Close')}>
                 <CloseIcon class="close-icon" />
-                <span>Close</span>
+                <span>{t('close','Close')}</span>
               </button>
             </div>
           </header>
@@ -205,7 +206,7 @@
                 </div>
                 <input
                   type="text"
-                  placeholder="Search gangs..."
+                  placeholder={t('serverManagement.search_placeholder','Search gangs...')}
                   bind:value={searchQuery}
                   class="search-input"
                 />
@@ -217,7 +218,7 @@
                     <div class="gang-header">
                       <div class="gang-name-section">
                         <h3 class="gang-name">{gang.label}</h3>
-                        <span class="gang-id">ID: {gang.id}</span>
+                        <span class="gang-id">{t('serverManagement.id_label', 'ID')}: {gang.id}</span>
                       </div>
                       <button class="btn-icon-only" on:click={() => viewGangDetails(gang)}>
                         <EditIcon />
@@ -227,34 +228,34 @@
                     <div class="gang-details">
                       <div class="detail-item">
                         <UsersIcon class="detail-icon" />
-                        <span class="detail-label">Owner:</span>
+                        <span class="detail-label">{t('owner_label', 'Owner')}:</span>
                         <span class="detail-value">{gang.owner}</span>
                       </div>
                       <div class="detail-item">
                         <UsersIcon class="detail-icon" />
-                        <span class="detail-label">Members:</span>
+                        <span class="detail-label">{t('members_label', 'Members')}:</span>
                         <span class="detail-value">{gang.members}</span>
                       </div>
                       <div class="detail-item">
                         <CrownIcon class="detail-icon" />
-                        <span class="detail-label">Ranks:</span>
+                        <span class="detail-label">{t('ranks_label', 'Ranks')}:</span>
                         <span class="detail-value">{gang.ranks}</span>
                       </div>
                       <div class="detail-item">
-                        <span class="detail-label">Created:</span>
+                        <span class="detail-label">{t('created_label', 'Created')}:</span>
                         <span class="detail-value">{formatDate(gang.created)}</span>
                       </div>
                     </div>
 
                     <div class="gang-actions">
-                      <button class="btn btn-secondary btn-sm" on:click={() => viewMembers(gang)}>View Members</button>
-                      <button class="btn btn-secondary btn-sm" on:click={() => viewRanks(gang)}>View Ranks</button>
+                      <button class="btn btn-secondary btn-sm" on:click={() => viewMembers(gang)}>{t('view_members','View Members')}</button>
+                      <button class="btn btn-secondary btn-sm" on:click={() => viewRanks(gang)}>{t('view_ranks','View Ranks')}</button>
                       <button class="btn btn-danger btn-sm" on:click={() => {
                         selectedGang = gang;
                         showDeleteModal = true;
                       }}>
                         <TrashIcon class="btn-icon-sm" />
-                        Delete
+                        {t('delete','Delete')}
                       </button>
                     </div>
                   </div>
@@ -290,7 +291,7 @@
           <button 
             class="notification-close" 
             on:click={() => dismissNotification(notification.id)}
-            aria-label="Close notification"
+            aria-label={t('notification_close','Close notification')}
           >
             <CloseIcon class="close-icon-sm" />
           </button>
@@ -303,7 +304,7 @@
       <div class="modal-backdrop" on:click={() => showCreateModal = false}>
         <div class="modal" on:click|stopPropagation>
           <div class="modal-header">
-            <h3>Create New Gang</h3>
+            <h3>{t('create_gang_title','Create New Gang')}</h3>
             <button class="btn-icon-only" on:click={() => showCreateModal = false}>
               <CloseIcon />
             </button>
@@ -311,49 +312,49 @@
           
           <div class="modal-content">
             <div class="form-group">
-              <label>Gang Name (Internal)</label>
+              <label>{t('create_gang_internal','Gang Name (Internal)')}</label>
               <input
                 type="text"
                 bind:value={newGang.name}
                 class="form-input"
-                placeholder="e.g. ballas"
+                placeholder={t('example_internal','e.g. ballas')}
               />
             </div>
             <div class="form-group">
-              <label>Gang Label (Display Name)</label>
+              <label>{t('create_gang_label','Gang Label (Display Name)')}</label>
               <input
                 type="text"
                 bind:value={newGang.label}
                 class="form-input"
-                placeholder="e.g. Ballas"
+                placeholder={t('example_display','e.g. Ballas')}
               />
             </div>
             <div class="form-group">
-              <label>Owner Server ID</label>
+              <label>{t('create_gang_owner','Owner Server ID')}</label>
               <input
                 type="text"
                 bind:value={newGang.owner}
                 class="form-input"
-                placeholder="e.g. 1"
+                placeholder={t('example_owner','e.g. 1')}
               />
             </div>
             
             <div class="info-card" style="margin-top: 16px;">
-              <h3>Important Notes</h3>
+              <h3>{t('important_notes','Important Notes')}</h3>
               <ul>
-                <li>Gang name must be unique and lowercase</li>
-                <li>Owner must be online to create the gang</li>
-                <li>Default ranks will be created automatically</li>
+                <li>{t('note_name_unique','Gang name must be unique and lowercase')}</li>
+                <li>{t('note_owner_online','Owner must be online to create the gang')}</li>
+                <li>{t('note_default_ranks','Default ranks will be created automatically')}</li>
               </ul>
             </div>
           </div>
 
           <div class="modal-footer">
             <button class="btn btn-secondary" on:click={() => showCreateModal = false}>
-              Cancel
+              {t('cancel','Cancel')}
             </button>
             <button class="btn btn-primary" on:click={createGang}>
-              Create Gang
+              {t('create_gang_action','Create Gang')}
             </button>
           </div>
         </div>
@@ -363,18 +364,18 @@
     {#if showStashPrompt}
       <div class="modal-backdrop">
         <div class="modal" on:click|stopPropagation>
-          <h3>Gang Created!</h3>
-          <p>Do you want to place the gang stash now?</p>
+          <h3>{t('gang_created','Gang Created!')}</h3>
+          <p>{t('place_stash_prompt','Do you want to place the gang stash now?')}</p>
           <div class="modal-actions">
             <button class="btn btn-secondary" on:click={() => showStashPrompt = false}>
-              Later
+              {t('later','Later')}
             </button>
             <button class="btn btn-primary" on:click={() => {
               fetchNui("serverManagement:placeStash", { gangId: createdGangId });
               showStashPrompt = false;
               closeUI();
             }}>
-              Place Stash Now
+              {t('place_stash_now','Place Stash Now')}
             </button>
           </div>
         </div>
@@ -384,15 +385,15 @@
     {#if showDeleteModal && selectedGang}
       <div class="modal-backdrop" on:click={() => showDeleteModal = false}>
         <div class="modal" on:click|stopPropagation>
-          <h3>Confirm Deletion</h3>
-          <p>Are you sure you want to delete <strong>{selectedGang.label}</strong>?</p>
-          <p class="warning-text">This action cannot be undone!</p>
+          <h3>{t('confirm_delete_title','Confirm Deletion')}</h3>
+          <p>{t('confirm_delete_msg','Are you sure you want to delete')} <strong>{selectedGang.label}</strong>?</p>
+          <p class="warning-text">{t('confirm_delete_warning','This action cannot be undone!')}</p>
           <div class="modal-actions">
             <button class="btn btn-secondary" on:click={() => showDeleteModal = false}>
-              Cancel
+              {t('cancel','Cancel')}
             </button>
             <button class="btn btn-danger" on:click={() => deleteGang(selectedGang.id)}>
-              Delete Gang
+              {t('delete_gang','Delete Gang')}
             </button>
           </div>
         </div>
@@ -404,7 +405,7 @@
       <div class="modal-backdrop" on:click={() => showMembersModal = false}>
         <div class="modal modal-large" on:click|stopPropagation>
           <div class="modal-header">
-            <h3>{selectedGang.label} - Members</h3>
+            <h3>{selectedGang.label} - {t('members_label','Members')}</h3>
             <button class="btn-icon-only" on:click={() => showMembersModal = false}>
               <CloseIcon />
             </button>
@@ -413,10 +414,10 @@
           <div class="modal-content">
             <div class="members-table">
               <div class="table-header">
-                <div class="th">Name</div>
-                <div class="th">Rank</div>
-                <div class="th">Status</div>
-                <div class="th">Joined</div>
+                <div class="th">{t('name_label','Name')}</div>
+                <div class="th">{t('rank_label','Rank')}</div>
+                <div class="th">{t('status_label','Status')}</div>
+                <div class="th">{t('joined_label','Joined')}</div>
               </div>
               {#each selectedGang.membersList as member}
                 <div class="table-row">
@@ -425,8 +426,8 @@
                     <span class="rank-badge">{member.rank}</span>
                   </div>
                   <div class="td">
-                    <span class="status-badge {member.online ? 'online' : 'offline'}">
-                      {member.online ? 'Online' : 'Offline'}
+                      <span class="status-badge {member.online ? 'online' : 'offline'}">
+                      {member.online ? t('online','Online') : t('offline','Offline')}
                     </span>
                   </div>
                   <div class="td">{formatDate(member.joined)}</div>
@@ -437,7 +438,7 @@
 
           <div class="modal-footer">
             <button class="btn btn-secondary" on:click={() => showMembersModal = false}>
-              Close
+              {t('close','Close')}
             </button>
           </div>
         </div>
@@ -449,7 +450,7 @@
       <div class="modal-backdrop" on:click={() => showRanksModal = false}>
         <div class="modal modal-large" on:click|stopPropagation>
           <div class="modal-header">
-            <h3>{selectedGang.label} - Ranks</h3>
+            <h3>{selectedGang.label} - {t('ranks_label','Ranks')}</h3>
             <button class="btn-icon-only" on:click={() => showRanksModal = false}>
               <CloseIcon />
             </button>
@@ -464,16 +465,16 @@
                       <h4 class="rank-name">{rank.name}</h4>
                       <span class="rank-grade">Grade {rank.grade}</span>
                     </div>
-                    <div class="rank-count">{rank.members} Members</div>
+                    <div class="rank-count">{rank.members} {t('members_label','Members')}</div>
                   </div>
                   
                   <div class="rank-permissions">
-                    <div class="permissions-label">Permissions:</div>
+                    <div class="permissions-label">{t('permissions_label','Permissions:')}</div>
                     <div class="permissions-list">
                       {#if rank.permissions.length === 0}
-                        <span class="permission-badge empty">None</span>
+                        <span class="permission-badge empty">{t('permissions_none','None')}</span>
                       {:else if rank.permissions.includes("All")}
-                        <span class="permission-badge all">All Permissions</span>
+                        <span class="permission-badge all">{t('permissions_all','All Permissions')}</span>
                       {:else}
                         {#each rank.permissions as permission}
                           <span class="permission-badge">{permission}</span>
@@ -488,7 +489,7 @@
 
           <div class="modal-footer">
             <button class="btn btn-secondary" on:click={() => showRanksModal = false}>
-              Close
+              {t('close','Close')}
             </button>
           </div>
         </div>
@@ -500,7 +501,7 @@
       <div class="modal-backdrop" on:click={() => showEditModal = false}>
         <div class="modal modal-large" on:click|stopPropagation>
           <div class="modal-header">
-            <h3>Edit Gang - {selectedGang.label}</h3>
+            <h3>{t('edit_gang_title','Edit Gang')} - {selectedGang.label}</h3>
             <button class="btn-icon-only" on:click={() => showEditModal = false}>
               <CloseIcon />
             </button>
@@ -509,9 +510,9 @@
           <div class="modal-content">
             <div class="edit-gang-grid">
               <div class="edit-section">
-                <h4 class="section-title">Gang Information</h4>
+                <h4 class="section-title">{t('gang_info_title','Gang Information')}</h4>
                 <div class="form-group">
-                  <label>Gang Name</label>
+                  <label>{t('gang_name_label','Gang Name')}</label>
                   <input
                     type="text"
                     value={selectedGang.name}
@@ -520,7 +521,7 @@
                   />
                 </div>
                 <div class="form-group">
-                  <label>Gang Label</label>
+                  <label>{t('gang_label_label','Gang Label')}</label>
                   <input
                     type="text"
                     value={selectedGang.label}
@@ -529,7 +530,7 @@
                   />
                 </div>
                 <div class="form-group">
-                  <label>Owner</label>
+                  <label>{t('owner_label','Owner')}</label>
                   <input
                     type="text"
                     value={selectedGang.owner}
@@ -541,43 +542,43 @@
               </div>
 
               <div class="edit-section">
-                <h4 class="section-title">Gang Statistics</h4>
+                <h4 class="section-title">{t('gang_stats_title','Gang Statistics')}</h4>
                 <div class="stats-display">
                   <div class="stat-item">
-                    <span class="stat-label">Total Members</span>
+                    <span class="stat-label">{t('total_members','Total Members')}</span>
                     <span class="stat-value">{selectedGang.members}</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Total Ranks</span>
+                    <span class="stat-label">{t('total_ranks','Total Ranks')}</span>
                     <span class="stat-value">{selectedGang.ranks}</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Created</span>
+                    <span class="stat-label">{t('created_label','Created')}</span>
                     <span class="stat-value">{formatDate(selectedGang.created)}</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Gang ID</span>
+                    <span class="stat-label">{t('gang_id_label','Gang ID')}</span>
                     <span class="stat-value">#{selectedGang.id}</span>
                   </div>
                 </div>
               </div>
 
               <div class="edit-section full-width">
-                <h4 class="section-title">Quick Actions</h4>
+                <h4 class="section-title">{t('quick_actions','Quick Actions')}</h4>
                 <div class="quick-actions">
                   <button class="btn btn-secondary" on:click={() => {
                     showEditModal = false;
                     viewMembers(selectedGang);
                   }}>
                     <UsersIcon class="btn-icon" />
-                    View Members
+                    {t('view_members','View Members')}
                   </button>
                   <button class="btn btn-secondary" on:click={() => {
                     showEditModal = false;
                     viewRanks(selectedGang);
                   }}>
                     <CrownIcon class="btn-icon" />
-                    View Ranks
+                    {t('view_ranks','View Ranks')}
                   </button>
                   <button class="btn btn-secondary" on:click={() => {
                     fetchNui("serverManagement:placeStash", { gangId: selectedGang.id });
@@ -585,14 +586,14 @@
                     closeUI();
                   }}>
                     <MapMarkerIcon class="btn-icon" />
-                    Place Stash
+                    {t('place_stash','Place Stash')}
                   </button>
                   <button class="btn btn-danger" on:click={() => {
                     showEditModal = false;
                     showDeleteModal = true;
                   }}>
                     <TrashIcon class="btn-icon" />
-                    Delete Gang
+                    {t('delete_gang','Delete Gang')}
                   </button>
                 </div>
               </div>
@@ -601,13 +602,13 @@
 
           <div class="modal-footer">
             <button class="btn btn-secondary" on:click={() => showEditModal = false}>
-              Cancel
+              {t('cancel','Cancel')}
             </button>
             <button class="btn btn-primary" on:click={() => {
               fetchNui("serverManagement:updateGang", selectedGang);
               showEditModal = false;
             }}>
-              Save Changes
+              {t('save_changes','Save Changes')}
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { fade, fly, scale } from 'svelte/transition';
   import { fetchNui } from '../../utils/fetchNui';
+  import { t } from '../../utils/translate';
   
   // Icons
   import SwordIcon from "virtual:icons/mdi/sword-cross";
@@ -118,12 +119,12 @@
 
   async function sendGangWarInvite() {
     if (!selectedGangId) {
-      alert('Please select a gang');
+      fetchNui('trase_gangs:notify', { title: $locales['error'] || 'Error', description: $locales['gangwar_no_gang'] || 'Please select a gang', type: 'error' });
       return;
     }
 
     if (killsToWin < 1) {
-      alert('Kills to win must be at least 1');
+      fetchNui('trase_gangs:notify', { title: $locales['error'] || 'Error', description: $locales['gangwar_invalid_kills'] || 'Kills to win must be at least 1', type: 'error' });
       return;
     }
 
@@ -205,7 +206,7 @@
   }
 
   function formatCurrency(value: number): string {
-    if (value === 0) return 'No wager';
+    if (value === 0) return t('gangwars.no_wager','No wager');
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -230,13 +231,13 @@
     <div class="header-content">
       <SwordIcon class="header-icon" />
       <div>
-        <h2>Gang Wars</h2>
-        <p>{wins}W - {losses}L · {totalWars} total wars</p>
+        <h2>{t('gangwars.title','Gang Wars')}</h2>
+        <p>{wins}W - {losses}L · {totalWars} {t('gangwars.total_wars','total wars')}</p>
       </div>
     </div>
-    <button class="create-btn" on:click={openCreateModal} in:scale={{ start: 0.8, duration: 250, delay: 100 }}>
+      <button class="create-btn" on:click={openCreateModal} in:scale={{ start: 0.8, duration: 250, delay: 100 }}>
       <PlusIcon />
-      <span>Create Gang War</span>
+      <span>{t('gangwars.create_war','Create Gang War')}</span>
     </button>
   </div>
 
@@ -248,7 +249,7 @@
       on:click={() => activeTab = 'history'}
     >
       <HistoryIcon />
-      <span>War History</span>
+      <span>{t('gangwars.tab_history','War History')}</span>
       <span class="badge">{totalWars}</span>
     </button>
     <button 
@@ -257,7 +258,7 @@
       on:click={() => activeTab = 'requests'}
     >
       <InboxIcon />
-      <span>Incoming Requests</span>
+      <span>{t('gangwars.tab_incoming','Incoming Requests')}</span>
       {#if incomingRequests.length > 0}
         <span class="badge highlight">{incomingRequests.length}</span>
       {/if}
@@ -268,7 +269,7 @@
       on:click={() => activeTab = 'outgoing'}
     >
       <SendIcon />
-      <span>Outgoing Requests</span>
+      <span>{t('gangwars.tab_outgoing','Outgoing Requests')}</span>
       {#if outgoingRequests.length > 0}
         <span class="badge">{outgoingRequests.length}</span>
       {/if}
@@ -281,11 +282,11 @@
       <table>
         <thead>
           <tr>
-            <th>Result</th>
-            <th>Opponent</th>
-            <th>K/D</th>
-            <th>Wager</th>
-            <th>Date</th>
+            <th>{t('gangwars.col_result','Result')}</th>
+            <th>{t('gangwars.col_opponent','Opponent')}</th>
+            <th>{t('gangwars.col_kd','K/D')}</th>
+            <th>{t('gangwars.col_wager','Wager')}</th>
+            <th>{t('gangwars.col_date','Date')}</th>
           </tr>
         </thead>
         <tbody>
@@ -294,8 +295,8 @@
               <td colspan="5" class="empty-state">
                 <div class="empty-content">
                   <SwordIcon class="empty-icon" />
-                  <p>No gang wars yet</p>
-                  <span>Start a gang war to see your history</span>
+                  <p>{t('gangwars.no_wars','No gang wars yet')}</p>
+                  <span>{t('gangwars.history_empty','Start a gang war to see your history')}</span>
                 </div>
               </td>
             </tr>
@@ -306,10 +307,10 @@
                   <div class="result-badge" class:win={war.result === 'win'} class:loss={war.result === 'loss'}>
                     {#if war.result === 'win'}
                       <TrophyIcon />
-                      <span>Victory</span>
+                      <span>{t('gangwars.result_victory','Victory')}</span>
                     {:else}
                       <SkullIcon />
-                      <span>Defeat</span>
+                      <span>{t('gangwars.result_defeat','Defeat')}</span>
                     {/if}
                   </div>
                 </td>
@@ -342,8 +343,8 @@
       {#if incomingRequests.length === 0}
         <div class="empty-state-box">
           <InboxIcon class="empty-icon" />
-          <p>No incoming requests</p>
-          <span>Gang war invites will appear here</span>
+          <p>{t('gangwars.no_incoming','No incoming requests')}</p>
+          <span>{t('gangwars.incoming_hint','Gang war invites will appear here')}</span>
         </div>
       {:else}
         <div class="requests-grid">
@@ -359,11 +360,11 @@
               
               <div class="request-details">
                 <div class="detail-item">
-                  <span class="detail-label">Kills to Win</span>
+                  <span class="detail-label">{t('gangwars.kills_to_win','Kills to Win')}</span>
                   <span class="detail-value">{request.killsToWin}</span>
                 </div>
                 <div class="detail-item">
-                  <span class="detail-label">Wager</span>
+                  <span class="detail-label">{t('gangwars.wager_label','Wager')}</span>
                   <span class="detail-value">{formatCurrency(request.wager)}</span>
                 </div>
               </div>
@@ -371,11 +372,11 @@
               <div class="request-actions">
                 <button class="action-btn decline" on:click={() => declineGangWarRequest(request)}>
                   <CloseIcon />
-                  <span>Decline</span>
+                  <span>{t('invite_decline','Decline')}</span>
                 </button>
                 <button class="action-btn accept" on:click={() => acceptGangWarRequest(request)}>
                   <CheckIcon />
-                  <span>Accept</span>
+                  <span>{t('invite_accept','Accept')}</span>
                 </button>
               </div>
             </div>
@@ -417,7 +418,7 @@
               <div class="request-actions">
                 <button class="action-btn decline full-width" on:click={() => cancelOutgoingRequest(request)}>
                   <CloseIcon />
-                  <span>Cancel Invite</span>
+                  <span>{t('gangwars.cancel_invite','Cancel Invite')}</span>
                 </button>
               </div>
             </div>
@@ -433,7 +434,7 @@
   <div class="modal-overlay" on:click={closeCreateModal} transition:fade={{ duration: 200 }}>
     <div class="modal" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 250 }}>
       <div class="modal-header">
-        <h3>Create Gang War</h3>
+        <h3>{t('gangwars.create_war','Create Gang War')}</h3>
         <button class="close-btn" on:click={closeCreateModal}>
           <CloseIcon />
         </button>
@@ -450,7 +451,7 @@
             <label for="gang-select">Select Gang</label>
             <select id="gang-select" bind:value={selectedGangId}>
               {#each filteredGangs as gang}
-                <option value={gang.id}>{gang.name} ({gang.memberCount} members)</option>
+                <option value={gang.id}>{gang.name} ({gang.memberCount} {t('members_label','Members')})</option>
               {/each}
             </select>
           </div>
@@ -458,28 +459,28 @@
 
         {#if filteredGangs.length > 0}
           <div class="form-group">
-            <label for="kills-to-win">Kills to Win</label>
+            <label for="kills-to-win">{t('gangwars.kills_to_win','Kills to Win')}</label>
             <input 
               id="kills-to-win"
               type="number" 
               bind:value={killsToWin} 
               min="1"
-              placeholder="25"
+              placeholder={t('gangwars.placeholder_kills','25')}
             />
           </div>
 
           <div class="form-group">
             <label for="wager-amount">
-              Wager Amount <span class="optional">(Optional)</span>
+              {t('gangwars.wager_amount','Wager Amount')} <span class="optional">{t('optional','(Optional)')}</span>
             </label>
             <input 
               id="wager-amount"
               type="number" 
               bind:value={wagerAmount} 
               min="0"
-              placeholder="Enter wager amount..."
+              placeholder={t('gangwars.placeholder_wager','Enter wager amount...')}
             />
-            <span class="form-hint">Leave empty for no wager</span>
+            <span class="form-hint">{t('gangwars.no_wager_hint','Leave empty for no wager')}</span>
           </div>
         {/if}
       </div>

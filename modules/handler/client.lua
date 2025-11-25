@@ -90,7 +90,7 @@ function Handler:UpdateStashInteraction()
             end
 
             AddInteraction(interactionId, {
-                label = '[E] - Open Stash',
+                localeKey = 'stash_open',
                 coords = vecCoords,
                 distance = 2.0,
                 onInteract = function()
@@ -98,8 +98,8 @@ function Handler:UpdateStashInteraction()
                         exports.ox_inventory:openInventory('stash', 'gang_' .. self.currentGang.id)
                     else
                         lib.notify({
-                            title = 'Error',
-                            description = 'You do not have permission to access the stash',
+                            title = TranslateText('error', 'Error'),
+                            description = TranslateText('stash_no_permission', 'You do not have permission to access the stash'),
                             type = 'error'
                         })
                     end

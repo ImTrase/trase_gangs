@@ -94,21 +94,17 @@ local function beginSetup()
 
     checkGangWarTables()
 
-    require 'modules.handler.server'
     enabled.handler = true
 
     if Config.Features.Drugzones.Enabled then
-        require 'modules.drugzones.server'
         enabled.drugzones = true
     end
 
     if Config.Features.Turfs.Enabled then
-        require 'modules.turfs.server'
         enabled.turfs = true
     end
 
     if Config.Features.GangWars and Config.Features.GangWars.Enabled then
-        require 'modules.gangwars.server'
         enabled.gangwars = true
     end
 

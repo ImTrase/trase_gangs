@@ -1,5 +1,4 @@
-
-local ActivityOverlay = {}
+ActivityOverlay = {}
 ActivityOverlay.__index = ActivityOverlay
 
 function ActivityOverlay:new()
@@ -121,5 +120,3 @@ function ActivityOverlay:HideTimer()
     self.showTimer = false
     self:SetTimer(0)
 end
-
-return ActivityOverlay

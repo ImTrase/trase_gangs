@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '../../utils/translate';
   import { fade, fly } from 'svelte/transition';
   import { fetchNui } from '../../utils/fetchNui';
-  
+
   // Icons
   import TrophyIcon from "virtual:icons/mdi/trophy";
   import PillIcon from "virtual:icons/mdi/pill";
@@ -107,7 +108,7 @@
 <div class="dashboard" in:fade={{ duration: 200 }}>
   <!-- Gang Header -->
   <div class="gang-header" in:fly={{ y: -20, duration: 250, delay: 50 }}>
-    <h2 class="gang-name">{gang.label || 'Gang Dashboard'}</h2>
+    <h2 class="gang-name">{gang.label || t('dashboard.gang_dashboard','Gang Dashboard')}</h2>
     <div class="rep-badge">
       <TrophyIcon class="rep-icon" />
       <span>{(gang.reputation || 0).toLocaleString()} REP</span>
@@ -122,9 +123,9 @@
         <CashIcon />
       </div>
       <div class="stat-content">
-        <div class="stat-label">Total Revenue</div>
+        <div class="stat-label">{t('dashboard.total_revenue','Total Revenue')}</div>
         <div class="stat-value">{formatCurrency(gang.total_revenue || 0)}</div>
-        <div class="stat-subtext">All-time earnings</div>
+        <div class="stat-subtext">{t('dashboard.all_time_earnings','All-time earnings')}</div>
       </div>
     </div>
 
@@ -134,9 +135,9 @@
         <UserCheckIcon />
       </div>
       <div class="stat-content">
-        <div class="stat-label">Online Members</div>
+        <div class="stat-label">{t('dashboard.online_members','Online Members')}</div>
         <div class="stat-value">{onlineMembersCount}</div>
-        <div class="stat-subtext">of {totalMembers} total</div>
+        <div class="stat-subtext">{t('dashboard.of_total','of {n} total').replace('{n}', String(totalMembers))}</div>
       </div>
     </div>
 
@@ -146,7 +147,7 @@
         <UsersIcon />
       </div>
       <div class="stat-content">
-        <div class="stat-label">Total Members</div>
+        <div class="stat-label">{t('dashboard.total_members','Total Members')}</div>
         <div class="stat-value">{totalMembers}</div>
       </div>
     </div>
@@ -162,13 +163,13 @@
             <TrophyIcon />
           </div>
           <div class="stat-content">
-            <div class="stat-label">Turf Wins</div>
+            <div class="stat-label">{t('dashboard.turf_wins','Turf Wins')}</div>
             <div class="stat-value">{stats.turf_wins || 0}</div>
           </div>
         </div>
         <div class="chart-meta">
           <TrendingUpIcon class="trend-icon" />
-          <span>Last 5 periods</span>
+          <span>{t('dashboard.last_n_periods','Last {n} periods').replace('{n}', '5')}</span>
         </div>
       </div>
       <div class="full-chart">
@@ -205,13 +206,13 @@
             <PillIcon />
           </div>
           <div class="stat-content">
-            <div class="stat-label">Drugzone Wins</div>
+            <div class="stat-label">{t('dashboard.drugzone_wins','Drugzone Wins')}</div>
             <div class="stat-value">{stats.drugzone_wins || 0}</div>
           </div>
         </div>
         <div class="chart-meta">
           <TrendingUpIcon class="trend-icon" />
-          <span>Last 5 periods</span>
+          <span>{t('dashboard.last_n_periods','Last {n} periods').replace('{n}','5')}</span>
         </div>
       </div>
       <div class="full-chart">

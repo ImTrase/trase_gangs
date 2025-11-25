@@ -3,6 +3,7 @@
   import { cubicOut } from "svelte/easing";
   import { useNuiEvent } from "../utils/useNuiEvent";
   import { fetchNui } from "../utils/fetchNui";
+  import { t } from '../utils/translate';
 
 
   import "../theme.css";
@@ -66,22 +67,22 @@
     playerIdentifier: null
   };
 
-  const tabs: Array<{ key: PageKey; label: string; icon: any; gated?: boolean }> = [
-    { key: "home", label: "Dashboard", icon: HomeIcon },
-    { key: "ranks", label: "Ranks", icon: RankIcon },
-    { key: "members", label: "Members", icon: UsersIcon },
-    { key: "unlocks", label: "Recruiting", icon: UnlockIcon },
-    { key: "gangwars", label: "Gang Wars", icon: GangIcon },
-    { key: "auditlog", label: "Audit Log", icon: AuditIcon }
+  const tabs: Array<{ key: PageKey; labelKey: string; label: string; icon: any; gated?: boolean }> = [
+    { key: "home", labelKey: 'dashboard.page_home_title', label: "Dashboard", icon: HomeIcon },
+    { key: "ranks", labelKey: 'page.ranks.title', label: "Ranks", icon: RankIcon },
+    { key: "members", labelKey: 'page.members.title', label: "Members", icon: UsersIcon },
+    { key: "unlocks", labelKey: 'page.recruit.title', label: "Recruiting", icon: UnlockIcon },
+    { key: "gangwars", labelKey: 'page.gangwars.title', label: "Gang Wars", icon: GangIcon },
+    { key: "auditlog", labelKey: 'page.auditlog.title', label: "Audit Log", icon: AuditIcon }
   ];
 
-  const titles: Record<PageKey, { title: string; subtitle: string }> = {
-    home: { title: "Dashboard", subtitle: "Gang overview and statistics" },
-    members: { title: "Members", subtitle: "Manage gang members" },
-    ranks: { title: "Ranks", subtitle: "Configure gang ranks" },
-    unlocks: { title: "Recruiting", subtitle: "Gang recruitment" },
-    gangwars: { title: "Gang Wars", subtitle: "Territory and warfare" },
-    auditlog: { title: "Audit Log", subtitle: "Recent gang activity" }
+  const titles: Record<PageKey, { titleKey: string; title: string; subtitleKey: string; subtitle: string }> = {
+    home: { titleKey: 'dashboard.page_home_title', title: 'Dashboard', subtitleKey: 'dashboard.page_home_subtitle', subtitle: 'Gang overview and statistics' },
+    members: { titleKey: 'page.members.title', title: 'Members', subtitleKey: 'page.members.subtitle', subtitle: 'Manage gang members' },
+    ranks: { titleKey: 'page.ranks.title', title: 'Ranks', subtitleKey: 'page.ranks.subtitle', subtitle: 'Configure gang ranks' },
+    unlocks: { titleKey: 'page.recruit.title', title: 'Recruiting', subtitleKey: 'page.recruit.subtitle', subtitle: 'Gang recruitment' },
+    gangwars: { titleKey: 'page.gangwars.title', title: 'Gang Wars', subtitleKey: 'page.gangwars.subtitle', subtitle: 'Territory and warfare' },
+    auditlog: { titleKey: 'page.auditlog.title', title: 'Audit Log', subtitleKey: 'page.auditlog.subtitle', subtitle: 'Recent gang activity' }
   };
 
   useNuiEvent("dashboard:open", (data: any) => {
@@ -189,7 +190,7 @@
       class="backdrop"
       role="button"
       tabindex="0"
-      aria-label="Close overlay"
+      aria-label={t('close','Close')}
       in:fade={{ duration: 160 }}
       out:fade={{ duration: 160 }}
       on:click={(e) => e.currentTarget === e.target && closeUI()}
@@ -210,22 +211,22 @@
               <GangIcon class="brand-icon" />
             </div>
             <div class="brand-text">
-              <strong>{gangData.gang?.label || 'Gang Manager'}</strong>
-              <span>{gangData.gang ? gangData.members.length + ' members' : 'Manage and view your gang.'}</span>
+              <strong>{gangData.gang?.label || t('dashboard.gang_manager','Gang Manager')}</strong>
+              <span>{gangData.gang ? gangData.members.length + ' ' + t('members_label','members') : t('dashboard.manage_gang_subtitle','Manage and view your gang.')}</span>
             </div>
           </div>
 
           <div class="nav-section">
-            <div class="nav-label">Overview</div>
+            <div class="nav-label">{t('sidebar_nav_overview','Overview')}</div>
             <nav class="nav" aria-label="Primary">
-              {#each tabs as t}
+              {#each tabs as tab}
                 <button
-                  class="nav-item {page === t.key ? 'active' : ''}"
-                  on:click={() => selectTab(t.key)}
-                  aria-pressed={page === t.key}
+                  class="nav-item {page === tab.key ? 'active' : ''}"
+                  on:click={() => selectTab(tab.key)}
+                  aria-pressed={page === tab.key}
                 >
-                  <svelte:component this={t.icon} />
-                  <span>{t.label}</span>
+                  <svelte:component this={tab.icon} />
+                  <span>{t(tab.labelKey, tab.label)}</span>
                 </button>
               {/each}
             </nav>
@@ -245,10 +246,10 @@
         <div class="main">
           <!-- Top bar -->
           <header class="topbar">
-            <h1 class="page-title">{titles[page].title}</h1>
-            <button class="close-btn" on:click={closeUI} aria-label="Close">
+            <h1 class="page-title">{t(titles[page].titleKey, titles[page].title)}</h1>
+            <button class="close-btn" on:click={closeUI} aria-label={t('close','Close')}>
               <CloseIcon class="close-icon" />
-              <span>Close</span>
+              <span>{t('close','Close')}</span>
             </button>
           </header>
 

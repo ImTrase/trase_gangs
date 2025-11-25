@@ -17,7 +17,7 @@
   </div>
   <div class="actions">
     <span class="esc">ESC</span>
-    <button class="icon-btn" on:click={onClose} aria-label="Close"
+    <button class="icon-btn" on:click={onClose} aria-label={t('close','Close')}
       ><CloseIcon color="white" /></button
     >
   </div>

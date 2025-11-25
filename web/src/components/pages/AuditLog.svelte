@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { fetchNui } from '../../utils/fetchNui';
+  import { t } from '../../utils/translate';
   
   // Icons
   import FileIcon from "virtual:icons/mdi/file-document-outline";
@@ -135,8 +136,8 @@
     <div class="header-content">
       <FileIcon class="header-icon" />
       <div>
-        <h2>Audit Log</h2>
-        <p>{logs.length} recent activities</p>
+        <h2>{t('audit_log_title','Audit Log')}</h2>
+        <p>{logs.length} {t('recent_activities','recent activities')}</p>
       </div>
     </div>
   </div>
@@ -145,13 +146,13 @@
   {#if loading}
     <div class="loading" in:fade={{ duration: 200 }}>
       <div class="spinner"></div>
-      <p>Loading audit logs...</p>
+      <p>{t('loading_audit_logs','Loading audit logs...')}</p>
     </div>
   {:else if logs.length === 0}
     <div class="empty-state" in:fly={{ y: 20, duration: 250, delay: 150 }}>
       <FileIcon class="empty-icon" />
-      <h3>No Activity Yet</h3>
-      <p>Gang activity will appear here</p>
+      <h3>{t('no_activity_yet','No Activity Yet')}</h3>
+      <p>{t('activity_will_appear','Gang activity will appear here')}</p>
     </div>
   {:else}
     <div class="timeline" in:fly={{ y: 20, duration: 250, delay: 150 }}>
@@ -199,7 +200,7 @@
     {#if logs.length >= limit}
       <div class="load-more">
         <button class="btn btn-secondary" on:click={loadMore}>
-          Load More
+          {t('load_more','Load More')}
         </button>
       </div>
     {/if}
