@@ -103,6 +103,22 @@ function Turfs:startTurf(turfData)
 	})
 	local inst = self
 	function self.turfPoint:onEnter()
+		if Config.TeleportNonMembers then
+			local gang = LocalPlayer.state.gang
+			if not gang then
+				local center = vector3(turfData.coords.x, turfData.coords.y, turfData.coords.z)
+				local coords = GetEntityCoords(PlayerPedId())
+				local dir = coords - center
+				local dist = #dir
+				if dist < 0.1 then dir = vector3(1, 0, 0) end
+				local newPos = center + (dir / #dir) * (turfData.radius + 5.0)
+				SetEntityCoords(PlayerPedId(), newPos.x, newPos.y, newPos.z, false, false, false, false)
+				if lib and lib.notify then
+					lib.notify({ type = 'error', description = 'You must be in a gang to enter this zone!' })
+				end
+				return
+			end
+		end
 		inst.isInTurf = true
 		TriggerServerEvent('trase_gangs:turfs:playerEnter')
 		SetTimeout(300, function() inst:showOverlay() end)

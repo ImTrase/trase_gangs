@@ -812,4 +812,60 @@ RegisterCommand('debuggang', function()
     end
 end, false)
 
-return Handler
+RegisterNUICallback('setMemberRank', function(data, cb)
+    DebugPrint('[Client] setMemberRank callback triggered')
+    local success, result = lib.callback.await('trase_gangs:server:setMemberRank', false, data.identifier, data.rankGrade)
+    DebugPrint('[Client] setMemberRank response - success:', success, 'result:', result)
+    cb({ success = success, result = result })
+end)
+
+RegisterNUICallback('kickMember', function(data, cb)
+    DebugPrint('[Client] kickMember callback triggered')
+    local success, result = lib.callback.await('trase_gangs:server:kickMember', false, data.identifier)
+    DebugPrint('[Client] kickMember response - success:', success, 'result:', result)
+    cb({ success = success, result = result })
+end)
+
+RegisterCommand('ganginvites', function()
+    local invites = lib.callback.await('trase_gangs:server:getPendingInvites', false)
+    if not invites or #invites == 0 then
+        lib.notify({ type = 'error', description = 'You have no pending gang invites.' })
+        return
+    end
+
+    local options = {}
+    for _, invite in ipairs(invites) do
+        table.insert(options, {
+            title = invite.gang_label,
+            description = 'Click to accept or decline',
+            icon = 'envelope',
+            onSelect = function()
+                local alert = lib.alertDialog({
+                    header = 'Gang Invite',
+                    content = 'Do you want to join ' .. invite.gang_label .. '?',
+                    centered = true,
+                    cancel = true,
+                    labels = { confirm = 'Accept', cancel = 'Decline' }
+                })
+                if alert == 'confirm' then
+                    local success, result = lib.callback.await('trase_gangs:server:acceptInvite', false, invite.id)
+                    if success then
+                        lib.notify({ type = 'success', description = 'You joined the gang!' })
+                    else
+                        lib.notify({ type = 'error', description = result or 'Failed to join gang' })
+                    end
+                elseif alert == 'cancel' then
+                    lib.callback.await('trase_gangs:server:declineInvite', false, invite.id)
+                    lib.notify({ type = 'info', description = 'Invite declined' })
+                end
+            end
+        })
+    end
+
+    lib.registerContext({
+        id = 'gang_invites_menu',
+        title = 'Pending Invites',
+        options = options
+    })
+    lib.showContext('gang_invites_menu')
+end)

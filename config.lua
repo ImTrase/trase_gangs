@@ -1,30 +1,30 @@
 Config = { Strings = {} }
 
-Config.Language = 'en'
-Config.Debug = false
+Config.Language = 'en' -- Set the language locale here
+Config.Debug = false -- Enable debug prints
 Config.InteractionType = 'ox_lib' -- ox_lib or ox_target
 
-Config.Framework = 'auto'
+Config.Framework = 'auto' -- 'esx', 'qbcore', 'standalone', or 'auto' to detect
 
-Config.Commands = {
+Config.Commands = { -- Define command names here
     GangManage = 'gangmanage',
     ServerManagement = 'gangs',
     GangLeaderboard = 'gangleaderboard',
 }
 
-Config.Handler = {
-    DefaultMaxMembers = 10,
-    DefaultMaxRanks = 5,
-    InviteExpiryTime = 3600,
+Config.Handler = { -- Settings for gang management
+    DefaultMaxMembers = 10, -- Default maximum members in a gang
+    DefaultMaxRanks = 5, -- Default maximum ranks in a gang
+    InviteExpiryTime = 3600, -- Time in seconds before a gang invite expires
 
-    ReputationEnabled = true,
-    ReputationRewards = {
+    ReputationEnabled = true, -- Enable reputation system
+    ReputationRewards = { -- Rewards for various activities
         TurfWin = 100,
         DrugzoneWin = 75,
         GangWarWin = 150,
     },
 
-    UnlocksEnabled = true,
+    UnlocksEnabled = true, -- Enable gang unlocks (Coming Soon)
     Unlocks = {
         storage_upgrade_1 = { cost = 500, label = 'Storage Upgrade Tier 1' },
         storage_upgrade_2 = { cost = 1000, label = 'Storage Upgrade Tier 2' },
@@ -35,6 +35,7 @@ Config.Handler = {
 }
 
 Config.Features = {}
+Config.Features.TeleportNonMembers = true -- Teleport non-members out of zones
 Config.Features.Drugzones = {
     Enabled = true,
     Duration = 300,
@@ -135,3 +136,4 @@ Config.UI = {
     --     border_light = '#3a3a44',
     -- },
 }
+

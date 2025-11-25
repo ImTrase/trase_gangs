@@ -34,6 +34,8 @@ function Drugzones:spawnNPC(zoneName, npcData)
 
     SetEntityAsMissionEntity(ped, true, true)
     SetPedFleeAttributes(ped, 0, false)
+    SetPedCombatAttributes(ped, 46, true)
+    SetPedCombatAttributes(ped, 5, true)
     SetBlockingOfNonTemporaryEvents(ped, true)
     SetEntityInvincible(ped, true)
     FreezeEntityPosition(ped, true)
@@ -65,6 +67,16 @@ end
 function Drugzones:onNPCInteract(zoneName)
     if Config.Debug then
         print('[Drugzones] Player interacted with NPC in zone: ' .. zoneName)
+    end
+
+    local gang = LocalPlayer.state.gang
+    if not gang then
+        lib.notify({
+            title = TranslateText('error', 'Error'),
+            description = TranslateText('drugzone_not_in_gang', 'You must be in a gang to start a drug zone!'),
+            type = 'error'
+        })
+        return
     end
 
     local hasActiveZone, activeZoneName = lib.callback.await('trase_gangs:drugzone:checkActive', false)
@@ -183,6 +195,22 @@ function Drugzones:startDrugZone(zoneData)
     local drugzonesInstance = self
     
     function self.drugZonePoint:onEnter()
+        if Config.TeleportNonMembers then
+            local gang = LocalPlayer.state.gang
+            if not gang then
+                local center = vector3(zoneData.coords.x, zoneData.coords.y, zoneData.coords.z)
+                local coords = GetEntityCoords(PlayerPedId())
+                local dir = coords - center
+                local dist = #dir
+                if dist < 0.1 then dir = vector3(1, 0, 0) end
+                local newPos = center + (dir / #dir) * (zoneData.radius + 5.0)
+                SetEntityCoords(PlayerPedId(), newPos.x, newPos.y, newPos.z, false, false, false, false)
+                if lib and lib.notify then
+                    lib.notify({ type = 'error', description = 'You must be in a gang to enter this zone!' })
+                end
+                return
+            end
+        end
         if Config.Debug then
             print('Entered Drug Zone')
             print('[Drugzones] Instance check - activeDrugZone exists: ' .. tostring(drugzonesInstance.activeDrugZone ~= nil))

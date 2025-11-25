@@ -720,7 +720,8 @@
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: 12px;
-    overflow: hidden;
+    overflow-y: auto;
+    max-height: 65vh;
   }
 
   table {
@@ -729,8 +730,11 @@
   }
 
   thead {
-    background: rgba(99, 102, 241, 0.05);
+    background: var(--bg-elevated);
     border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
   th {

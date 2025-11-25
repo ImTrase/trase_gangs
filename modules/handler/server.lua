@@ -1788,6 +1788,17 @@ RegisterCommand(Config.Commands.GangManage, function(source)
         
         table.sort(ranksList, function(a, b) return a.grade > b.grade end)
         
+        local myRankName = "Member"
+        if gang.members[identifier] then
+            local myRankId = gang.members[identifier].rank_id
+            for _, rank in pairs(gang.ranks) do
+                if rank.id == myRankId then
+                    myRankName = rank.name
+                    break
+                end
+            end
+        end
+
         local dashboardData = {
             gang = {
                 id = gang.id,
@@ -1800,6 +1811,12 @@ RegisterCommand(Config.Commands.GangManage, function(source)
                 reputation = gang.reputation or 0,
                 total_revenue = gang.total_revenue or 0,
                 created_at = gang.created_at
+            },
+            me = {
+                name = GetPlayerName(source),
+                tag = "ID: " .. source,
+                role = myRankName,
+                icon = "https://i.pravatar.cc/300"
             },
             members = membersList,
             ranks = ranksList,
