@@ -10,6 +10,7 @@ Config.Commands = { -- Define command names here
     GangManage = 'gangmanage',
     ServerManagement = 'gangs',
     GangLeaderboard = 'gangleaderboard',
+    GangInfo = 'gang',
 }
 
 Config.Handler = { -- Settings for gang management

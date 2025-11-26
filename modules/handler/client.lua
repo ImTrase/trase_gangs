@@ -78,6 +78,7 @@ function Handler:UpdateStashInteraction()
         
         if Config.Debug then
             DebugPrint('[Handler Client] Updating stash interaction. Coords type: ' .. type(coords))
+            DebugPrint('[Handler Client] Coords value: ' .. json.encode(coords))
         end
 
         -- Ensure coords is a vector3 or table with x,y,z

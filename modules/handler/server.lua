@@ -187,7 +187,11 @@ function Handler:LoadAllGangs()
         if gang.stash_coords and type(gang.stash_coords) == 'string' and gang.stash_coords ~= '' then
             local status, result = pcall(json.decode, gang.stash_coords)
             if status then
-                gang.stash_coords = result
+                if type(result) == 'table' and result.x and result.y and result.z then
+                    gang.stash_coords = vector3(result.x, result.y, result.z)
+                else
+                    gang.stash_coords = result
+                end
                 if Config.Debug then
                     DebugPrint('[LoadAllGangs] Successfully decoded stash_coords')
                 end
@@ -384,7 +388,7 @@ function Handler:AddMember(gangId, identifier, rankGrade, actorIdentifier, skipI
     ]], {gangId, identifier, playerName, rankId})
     
     MySQL.insert.await([[
-        INSERT INTO trase_gang_member_stats (gang_id, identifier)
+        INSERT IGNORE INTO trase_gang_member_stats (gang_id, identifier)
         VALUES (?, ?)
     ]], {gangId, identifier})
     
@@ -941,14 +945,26 @@ function Handler:AcceptInvite(inviteId, inviteeIdentifier)
         return false, 'invite_not_found'
     end
     
-    local expiresAt = os.time({
-        year = string.sub(invite.expires_at, 1, 4),
-        month = string.sub(invite.expires_at, 6, 7),
-        day = string.sub(invite.expires_at, 9, 10),
-        hour = string.sub(invite.expires_at, 12, 13),
-        min = string.sub(invite.expires_at, 15, 16),
-        sec = string.sub(invite.expires_at, 18, 19)
-    })
+    local expiresAt = 0
+    if type(invite.expires_at) == 'number' then
+        if invite.expires_at > 1000000000000 then
+             expiresAt = math.floor(invite.expires_at / 1000)
+        else
+             expiresAt = invite.expires_at
+        end
+    elseif type(invite.expires_at) == 'string' then
+        local year, month, day, hour, min, sec = string.match(invite.expires_at, "(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
+        if year then
+            expiresAt = os.time({
+                year = year,
+                month = month,
+                day = day,
+                hour = hour,
+                min = min,
+                sec = sec
+            })
+        end
+    end
     
     if os.time() > expiresAt then
         MySQL.query.await('UPDATE trase_gang_invites SET status = "declined" WHERE id = ?', {inviteId})
@@ -1501,6 +1517,12 @@ lib.callback.register('trase_gangs:server:acceptInvite', function(source, invite
     
     if success then
         local gang = Handler:GetPlayerGang(xPlayer.identifier)
+        if Config.Debug then
+            DebugPrint('[AcceptInvite] Sending gang update to ' .. xPlayer.identifier)
+            if gang then
+                DebugPrint('[AcceptInvite] Gang: ' .. gang.label .. ' Stash: ' .. tostring(gang.stash_coords))
+            end
+        end
         TriggerClientEvent('trase_gangs:client:gangUpdated', source, gang)
     end
     
@@ -2347,6 +2369,89 @@ lib.callback.register('trase_gangs:server:declineGangWarRequest', function(sourc
     
     return true, 'request_declined'
 end)
+
+-- /leavegang (if they are in a gang, remove them)
+RegisterCommand('leavegang', function(src)
+    local identifier = GetPrimaryIdentifier(src)
+    if not identifier then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = {255, 0, 0},
+            args = {'[Gang System]', 'Could not retrieve your identifier!'}
+        })
+        return
+    end
+
+    local gang = Handler:GetPlayerGang(identifier)
+    if not gang then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = {255, 0, 0},
+            args = {'[Gang System]', 'You are not in a gang!'}
+        })
+        return
+    end
+    
+    if gang.owner_identifier == identifier then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = {255, 0, 0},
+            args = {'[Gang System]', 'You are the owner! You must delete the gang or transfer ownership to leave.'}
+        })
+        return
+    end
+    
+    local success, err = Handler:RemoveMember(gang.id, identifier, identifier)
+    
+    if success then
+        local ply = Player(src)
+        if ply and ply.state then
+            ply.state.gang = nil
+        end
+
+        TriggerClientEvent('chat:addMessage', src, {
+            color = {0, 255, 0},
+            args = {'[Gang System]', 'You have left the gang: ' .. gang.label}
+        })
+        TriggerClientEvent('trase_gangs:client:gangRemoved', src)
+    else
+        TriggerClientEvent('chat:addMessage', src, {
+            color = {255, 0, 0},
+            args = {'[Gang System]', 'Failed to leave gang: ' .. tostring(err)}
+        })
+    end
+end, false)
+
+RegisterCommand(Config.Commands.GangInfo, function(source)
+    local identifier = GetPrimaryIdentifier(source)
+    if not identifier then return end
+    
+    local gang = Handler:GetPlayerGang(identifier)
+    if not gang then
+        SendNotification(source, {
+            title = 'Gang Info',
+            description = 'You are not in a gang',
+            type = 'info'
+        })
+        return
+    end
+    
+    local member = gang.members[identifier]
+    local rankName = 'Unknown'
+    
+    if member then
+        for _, rank in pairs(gang.ranks) do
+            if rank.id == member.rank_id then
+                rankName = rank.name
+                break
+            end
+        end
+    end
+    
+    SendNotification(source, {
+        title = gang.label,
+        description = 'Rank: ' .. rankName,
+        type = 'info',
+        icon = 'users'
+    })
+end, false)
 
 exports('GetServerHandler', function()
     return Handler
