@@ -19,12 +19,21 @@ local function GetPrimaryIdentifier(src)
 end
 Drugzones.activeZone = nil
 Drugzones.zoneData = {}
+Drugzones.lastZoneTime = {}
 
 function Drugzones:StartZone(zoneName, zoneConfig)
     if self.activeZone then
         return false, 'zone_already_active'
     end
     if self.isStarting then return false, 'zone_starting' end
+
+    local lastTime = self.lastZoneTime[zoneName]
+    if lastTime then
+        local diff = os.time() - lastTime
+        if diff < Config.Features.Drugzones.Cooldown then
+            return false, 'zone_cooldown'
+        end
+    end
 
     if Config.Debug then
         DebugPrint('[Drugzones Server] Starting drug zone sequence: ' .. zoneName)
@@ -91,6 +100,7 @@ function Drugzones:EndZone()
 
 
     local zoneName = self.activeZone
+    self.lastZoneTime[zoneName] = os.time()
     self.activeZone = nil
     self.zoneData = {}
 

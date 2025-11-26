@@ -39,6 +39,7 @@ Config.Features.TeleportNonMembers = true -- Teleport non-members out of zones
 Config.Features.Drugzones = {
     Enabled = true,
     Duration = 300,
+    Cooldown = 1800, -- Cooldown in seconds before the same zone can be started again
     WinningPoints = 250,
     PointsPerSecond = 1,
     DrawDistance = 100.0,
@@ -69,6 +70,7 @@ Config.Features.Drugzones = {
 Config.Features.Turfs = {
     Enabled = true,
     Duration = 30,
+    Cooldown = 1800, -- Cooldown in seconds before the same turf can be started again
     DrawDistance = 100.0,
     MarkerType = 1,
     MarkerColor = { r = 0, g = 120, b = 255, a = 90 },

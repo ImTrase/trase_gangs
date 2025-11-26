@@ -65,12 +65,14 @@ Config.Strings['en'] = {
     ['turf_started'] = 'Turf "%s" started!',
     ['turf_start_failed'] = 'Failed to start turf: %s',
     ['turf_already_active'] = 'A turf is already active',
+    ['turf_cooldown'] = 'This turf is on cooldown',
 
     -- Drugzone translations
     ['drugzone_title'] = 'Drug Zone',
     ['drugzone_active_title'] = 'Drug Zone Active',
     ['drugzone_already_active_desc'] = 'There is already an active drug zone: %s. Please wait for it to finish.',
     ['drugzone_start_failed'] = 'Failed to start drug zone: %s',
+    ['drugzone_cooldown'] = 'This drug zone is on cooldown',
     ['drugzone_started_title'] = 'Drug Zone Started',
     ['drugzone_started_desc'] = 'The drug zone "%s" has been started!',
     ['drugzone_ended'] = 'The drug zone has ended!',

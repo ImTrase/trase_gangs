@@ -1,6 +1,7 @@
 local Turfs = {}
 Turfs.activeTurf = nil
 Turfs.turfData = {}
+Turfs.lastTurfTime = {}
 
 local function GetPrimaryIdentifier(src)
 	local ids = GetPlayerIdentifiers(src)
@@ -18,6 +19,14 @@ function Turfs:StartTurf(turfName, turfCfg)
 	if self.activeTurf then return false, 'turf_already_active' end
 	if self.isStarting then return false, 'turf_starting' end
 	if not turfCfg then return false, 'turf_not_found' end
+
+	local lastTime = self.lastTurfTime[turfName]
+	if lastTime then
+		local diff = os.time() - lastTime
+		if diff < Config.Features.Turfs.Cooldown then
+			return false, 'turf_cooldown'
+		end
+	end
 
 	if Config.Debug then print('[Turfs] Starting turf sequence: '..turfName) end
 
@@ -114,6 +123,7 @@ function Turfs:EndTurf()
 
 	if Config.Debug then print('[Turfs] Ending turf: '..self.activeTurf) end
 	TriggerClientEvent('trase_gangs:turfs:end', -1)
+	self.lastTurfTime[self.activeTurf] = os.time()
 	self.activeTurf = nil
 	self.turfData = {}
 	return true

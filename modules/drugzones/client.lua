@@ -99,9 +99,13 @@ function Drugzones:onNPCInteract(zoneName)
             type = 'success'
         })
     else
+        local msg = TranslateText('drugzone_start_failed', 'Failed to start drug zone: %s'):format(tostring(result))
+        if result == 'zone_cooldown' then
+            msg = TranslateText('drugzone_cooldown', 'This drug zone is on cooldown')
+        end
         lib.notify({
             title = TranslateText('error', 'Error'),
-            description = TranslateText('drugzone_start_failed', 'Failed to start drug zone: %s'):format(tostring(result)),
+            description = msg,
             type = 'error'
         })
     end

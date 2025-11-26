@@ -89,6 +89,7 @@ function Turfs:startTurfAttempt(name)
 		local msg = TranslateText('turf_start_failed', 'Failed to start turf: %s'):format(reason)
 		if reason == 'no_gang' then msg = TranslateText('turf_no_gang', 'You must be in a gang to start a turf') end
 		if reason == 'turf_already_active' then msg = TranslateText('turf_already_active', 'A turf is already active') end
+		if reason == 'turf_cooldown' then msg = TranslateText('turf_cooldown', 'This turf is on cooldown') end
 		if lib and lib.notify then
 			lib.notify({ title = TranslateText('turf_title', 'Turf'), description = msg, type = 'error' })
 		end
@@ -134,9 +135,9 @@ function Turfs:startTurf(turfData)
 			local c = Config.Features.Turfs.ActiveMarkerColor
 			local distance = #(GetEntityCoords(PlayerPedId()) - vector3(turfData.coords.x, turfData.coords.y, turfData.coords.z))
             if distance <= Config.Features.Turfs.DrawDistance then
-				DrawMarker(1, turfData.coords.x, turfData.coords.y, turfData.coords.z-10.0,
+				DrawMarker(1, turfData.coords.x, turfData.coords.y, turfData.coords.z-50.0,
 					0.0,0.0,0.0, 0.0,0.0,0.0,
-					turfData.radius*2.0, turfData.radius*2.0, 60.0,
+					turfData.radius*2.0, turfData.radius*2.0, 100.0,
 					c.r,c.g,c.b,c.a,
 					false,false,2,false,nil,nil,false)
 			end
