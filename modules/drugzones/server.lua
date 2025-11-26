@@ -69,7 +69,8 @@ function Drugzones:StartZone(zoneName, zoneConfig)
             name = zoneName,
             coords = zoneConfig.coords,
             radius = zoneConfig.radius,
-            duration = Config.Features.Drugzones.Duration
+            duration = Config.Features.Drugzones.Duration,
+            startTime = self.zoneData.startTime
         })
 
         self:StartPointAccumulation()

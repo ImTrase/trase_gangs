@@ -60,7 +60,8 @@ function Turfs:StartTurf(turfName, turfCfg)
 			name = turfName,
 			coords = turfCfg.coords,
 			radius = turfCfg.radius,
-			duration = self.turfData.duration
+			duration = self.turfData.duration,
+			startTime = self.turfData.startTime
 		})
 
 		SetTimeout(self.turfData.duration * 1000, function()

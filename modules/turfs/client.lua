@@ -172,15 +172,28 @@ function Turfs:showOverlay()
 		return ak > bk
 	end)
 	for i,e in ipairs(leaderboard) do e.position = i end
-	self.overlay:Show({
-		title = self.activeTurf.name or 'TURF',
-		description = 'Compete for control. Most alive members wins.',
-		stats = {},
-		leaderboard = leaderboard,
-		showTimer = true,
-		timerDuration = self.activeTurf.duration or Config.Features.Turfs.Duration,
-		timerLabel = 'TIME REMAINING'
-	})
+
+	if self.overlay:IsVisible() then
+		self.overlay:UpdateStats({})
+		self.overlay:UpdateLeaderboard(leaderboard)
+	else
+		local remainingTime = self.activeTurf.duration or Config.Features.Turfs.Duration
+		if self.activeTurf.startTime then
+			local elapsed = GetCloudTimeAsInt() - self.activeTurf.startTime
+			remainingTime = math.max(0, remainingTime - elapsed)
+		end
+
+		self.overlay:Show({
+			title = self.activeTurf.name or 'TURF',
+			description = 'Compete for control. Most alive members wins.',
+			stats = {},
+			leaderboard = leaderboard,
+			showTimer = true,
+			timerDuration = remainingTime,
+			totalDuration = self.activeTurf.duration or Config.Features.Turfs.Duration,
+			timerLabel = 'TIME REMAINING'
+		})
+	end
 end
 
 function Turfs:hideOverlay()

@@ -10,6 +10,7 @@ function ActivityOverlay:new()
     self.leaderboard = {}
     self.showTimer = false
     self.timerDuration = 0
+    self.totalDuration = 0
     self.timerLabel = "TIME REMAINING"
     return self
 end
@@ -22,6 +23,7 @@ function ActivityOverlay:Show(data)
     self.leaderboard = data.leaderboard or {}
     self.showTimer = data.showTimer or false
     self.timerDuration = data.timerDuration or 0
+    self.totalDuration = data.totalDuration or 0
     self.timerLabel = data.timerLabel or "TIME REMAINING"
     
     SendNUIMessage({
@@ -33,6 +35,7 @@ function ActivityOverlay:Show(data)
             leaderboard = self.leaderboard,
             showTimer = self.showTimer,
             timerDuration = self.timerDuration,
+            totalDuration = self.totalDuration,
             timerLabel = self.timerLabel
         }
     })

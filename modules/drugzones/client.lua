@@ -374,18 +374,30 @@ function Drugzones:showOverlay()
         print('  Leaderboard count: ' .. #leaderboard)
     end
     
-    self.overlay:Show({
-        title = self.activeDrugZone.name or 'DRUG ZONE',
-        description = 'First gang to ' .. Config.Features.Drugzones.WinningPoints .. ' points wins',
-        stats = stats,
-        leaderboard = leaderboard,
-        showTimer = true,
-        timerDuration = self.activeDrugZone.duration or Config.Features.Drugzones.Duration,
-        timerLabel = 'TIME REMAINING'
-    })
-    
+    local remainingTime = self.activeDrugZone.duration or Config.Features.Drugzones.Duration
+    if self.activeDrugZone.startTime then
+        local elapsed = GetCloudTimeAsInt() - self.activeDrugZone.startTime
+        remainingTime = math.max(0, remainingTime - elapsed)
+    end
+
     if Config.Debug then
-        print('[Drugzones] Overlay:Show() called successfully with ' .. (self.activeDrugZone.duration or Config.Features.Drugzones.Duration) .. 's timer')
+        print('[Drugzones] Overlay:Show() called successfully with ' .. remainingTime .. 's timer')
+    end
+
+    if self.overlay:IsVisible() then
+        self.overlay:UpdateStats(stats)
+        self.overlay:UpdateLeaderboard(leaderboard)
+    else
+        self.overlay:Show({
+            title = self.activeDrugZone.name or 'DRUG ZONE',
+            description = 'First gang to ' .. Config.Features.Drugzones.WinningPoints .. ' points wins',
+            stats = stats,
+            leaderboard = leaderboard,
+            showTimer = true,
+            timerDuration = remainingTime,
+            totalDuration = self.activeDrugZone.duration or Config.Features.Drugzones.Duration,
+            timerLabel = 'TIME REMAINING'
+        })
     end
 end
 

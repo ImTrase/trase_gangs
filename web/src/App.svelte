@@ -50,6 +50,7 @@
   // Timer state (disabled by default)
   let showTimer = false;
   let timerDuration = 0;
+  let totalDuration = 0;
   let timerLabel = t('activity_timer_label', 'TIME REMAINING');
 
   // Listen for NUI events to show/hide and update activity overlay
@@ -60,6 +61,7 @@
     activityLeaderboard = data.leaderboard || [];
     showTimer = data.showTimer || false;
     timerDuration = data.timerDuration || 0;
+    totalDuration = data.totalDuration || 0;
     timerLabel = data.timerLabel || t('activity_timer_label', 'TIME REMAINING');
     showActivity = true;
   });
@@ -91,6 +93,7 @@
     leaderboard={activityLeaderboard}
     {showTimer}
     {timerDuration}
+    {totalDuration}
     {timerLabel}
   />
   <Notifications />

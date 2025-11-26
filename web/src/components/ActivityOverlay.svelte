@@ -15,33 +15,63 @@
 
   // Timer props
   export let showTimer = false;
-  export let timerDuration = 0; // in seconds
+  export let timerDuration = 0; // in seconds (remaining time)
+  export let totalDuration = 0; // Total duration for progress bar
   export let timerLabel = t('activity_timer_label','TIME REMAINING');
 
   let timeRemaining = timerDuration;
   let progressPercent = 100;
   let timerInterval: number | null = null;
+  let lastSetDuration = 0;
 
   $: if (visible && showTimer && timerDuration > 0) {
-    startTimer();
+    // Only restart the timer if it's the first time or if duration changed significantly
+    // This prevents the timer from restarting on every reactive update
+    if (!timerInterval || Math.abs(timerDuration - lastSetDuration) > 2) {
+      startTimer();
+    }
   }
 
   function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
     
     timeRemaining = timerDuration;
-    progressPercent = 100;
+    lastSetDuration = timerDuration;
+    updateProgress();
 
     timerInterval = window.setInterval(() => {
       if (timeRemaining > 0) {
         timeRemaining -= 0.1;
-        progressPercent = (timeRemaining / timerDuration) * 100;
+        updateProgress();
       } else {
         timeRemaining = 0;
         progressPercent = 0;
         if (timerInterval) clearInterval(timerInterval);
       }
     }, 100);
+  }
+
+  function updateProgress() {
+    const base = totalDuration > 0 ? totalDuration : timerDuration;
+    // If totalDuration is provided, calculate percentage based on it.
+    // Otherwise fallback to timerDuration (starts at 100%).
+    // However, if we are using totalDuration, we need to ensure we don't use the *current* timerDuration as the base
+    // if it was just updated to "remaining time".
+    // Actually, if totalDuration is passed, use it. If not, use the initial timerDuration?
+    // The issue is startTimer resets timeRemaining to timerDuration.
+    
+    if (totalDuration > 0) {
+        progressPercent = (timeRemaining / totalDuration) * 100;
+    } else {
+        // Fallback behavior: relative to the value when startTimer was called?
+        // We don't store the "initial" value of this specific run easily without extra state.
+        // But if totalDuration is 0, we probably just want 100% -> 0% of whatever timerDuration is.
+        // But timerDuration updates...
+        // Let's just use timeRemaining / timerDuration (which is the current prop value).
+        // This might be jumpy if timerDuration updates.
+        // Ideally totalDuration should always be passed.
+        progressPercent = (timeRemaining / (timerDuration || 1)) * 100;
+    }
   }
 
   function formatTime(seconds: number): string {
