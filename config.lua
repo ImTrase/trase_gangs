@@ -41,6 +41,7 @@ Config.Features.Drugzones = {
     Duration = 300,
     WinningPoints = 250,
     PointsPerSecond = 1,
+    DrawDistance = 100.0,
     MarkerType = 1,
     MarkerColor = { r = 255, g = 0, b = 0, a = 100 },
     Zones = {
@@ -68,6 +69,7 @@ Config.Features.Drugzones = {
 Config.Features.Turfs = {
     Enabled = true,
     Duration = 30,
+    DrawDistance = 100.0,
     MarkerType = 1,
     MarkerColor = { r = 0, g = 120, b = 255, a = 90 },
     ActiveMarkerColor = { r = 0, g = 200, b = 255, a = 120 },

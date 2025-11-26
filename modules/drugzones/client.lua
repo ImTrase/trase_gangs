@@ -240,17 +240,20 @@ function Drugzones:startDrugZone(zoneData)
         while self.activeDrugZone do
             Wait(0)
             local markerColor = Config.Features.Drugzones.MarkerColor
-            DrawMarker(
-                Config.Features.Drugzones.MarkerType,
-                zoneData.coords.x,
-                zoneData.coords.y,
-                zoneData.coords.z - 1.0,
-                0.0, 0.0, 0.0,
-                0.0, 0.0, 0.0,
-                zoneData.radius * 2.0, zoneData.radius * 2.0, zoneData.radius * 2.0,
-                markerColor.r, markerColor.g, markerColor.b, markerColor.a,
-                false, false, 2, false, nil, nil, false
-            )
+            local distance = #(GetEntityCoords(PlayerPedId()) - vector3(zoneData.coords.x, zoneData.coords.y, zoneData.coords.z))
+            if distance <= Config.Features.Drugzones.DrawDistance then
+                DrawMarker(
+                    Config.Features.Drugzones.MarkerType,
+                    zoneData.coords.x,
+                    zoneData.coords.y,
+                    zoneData.coords.z - 1.0,
+                    0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0,
+                    zoneData.radius * 2.0, zoneData.radius * 2.0, zoneData.radius * 2.0,
+                    markerColor.r, markerColor.g, markerColor.b, markerColor.a,
+                    false, false, 2, false, nil, nil, false
+                )
+            end
         end
     end)
 

@@ -132,11 +132,14 @@ function Turfs:startTurf(turfData)
 		while inst.activeTurf do
 			Wait(0)
 			local c = Config.Features.Turfs.ActiveMarkerColor
-			DrawMarker(1, turfData.coords.x, turfData.coords.y, turfData.coords.z-10.0,
-				0.0,0.0,0.0, 0.0,0.0,0.0,
-				turfData.radius*2.0, turfData.radius*2.0, 60.0,
-				c.r,c.g,c.b,c.a,
-				false,false,2,false,nil,nil,false)
+			local distance = #(GetEntityCoords(PlayerPedId()) - vector3(turfData.coords.x, turfData.coords.y, turfData.coords.z))
+            if distance <= Config.Features.Turfs.DrawDistance then
+				DrawMarker(1, turfData.coords.x, turfData.coords.y, turfData.coords.z-10.0,
+					0.0,0.0,0.0, 0.0,0.0,0.0,
+					turfData.radius*2.0, turfData.radius*2.0, 60.0,
+					c.r,c.g,c.b,c.a,
+					false,false,2,false,nil,nil,false)
+			end
 		end
 	end)
 	if Config.Debug then print('[Turfs] Turf started: '..turfData.name) end
