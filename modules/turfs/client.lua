@@ -103,8 +103,8 @@ function Turfs:startTurf(turfData)
 		distance = turfData.radius,
 	})
 	local inst = self
-	function self.turfPoint:onEnter()
-		if Config.TeleportNonMembers then
+	function self.turfPoint:onEnter() -- onenter2
+		if Config.Features.TeleportNonMembers then
 			local gang = LocalPlayer.state.gang
 			if not gang then
 				local center = vector3(turfData.coords.x, turfData.coords.y, turfData.coords.z)

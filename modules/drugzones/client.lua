@@ -149,10 +149,11 @@ function Drugzones:loadZones()
                 coords = vec3(npcData.coords.x, npcData.coords.y, npcData.coords.z),
                 radius = radius,
                 debug = Config.Debug,
-                onEnter = function()
+                onEnter = function() -- onenter2
                     if Config.Debug then
                         print('[Drugzones] Player entered zone: ' .. zoneName)
                     end
+                    -- am i in a gang and how can i find out if im not?
                     self:spawnNPC(zoneName, npcData)
                 end,
                 onExit = function()
@@ -194,8 +195,8 @@ function Drugzones:startDrugZone(zoneData)
 
     local drugzonesInstance = self
     
-    function self.drugZonePoint:onEnter()
-        if Config.TeleportNonMembers then
+    function self.drugZonePoint:onEnter() -- onenter2
+        if Config.Features.TeleportNonMembers then
             local gang = LocalPlayer.state.gang
             if not gang then
                 local center = vector3(zoneData.coords.x, zoneData.coords.y, zoneData.coords.z)
