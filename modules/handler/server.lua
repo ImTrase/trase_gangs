@@ -1354,6 +1354,10 @@ lib.callback.register('trase_gangs:server:inviteMember', function(source, target
     local success, err = Handler:CreateInvite(gang.id, xPlayer.identifier, targetPlayer.identifier)
     
     if success then
+        SendNotification(targetServerId, {
+            title = 'Gang Invite Recieved',
+            description = string.format('You have been invited to join %s by %s', gang.label, xPlayer.getName())
+        })
         TriggerClientEvent('trase_gangs:client:inviteReceived', targetServerId, {
             gang_id = gang.id,
             gang_label = gang.label,
