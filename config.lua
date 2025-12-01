@@ -37,6 +37,7 @@ Config.Handler = { -- Settings for gang management
 
 Config.Features = {}
 Config.Features.TeleportNonMembers = true -- Teleport non-members out of zones
+Config.Features.DeleteVehicles = true -- Delete vehicles that enter zones
 Config.Features.Drugzones = {
     Enabled = true,
     Duration = 300,

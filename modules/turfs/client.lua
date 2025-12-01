@@ -120,6 +120,12 @@ function Turfs:startTurf(turfData)
 				return
 			end
 		end
+		if Config.Features.DeleteVehicles then
+            local veh = GetVehiclePedIsIn(PlayerPedId(), false)
+            if veh and DoesEntityExist(veh) then
+                DeleteEntity(veh)
+            end
+        end
 		inst.isInTurf = true
 		TriggerServerEvent('trase_gangs:turfs:playerEnter')
 		SetTimeout(300, function() inst:showOverlay() end)

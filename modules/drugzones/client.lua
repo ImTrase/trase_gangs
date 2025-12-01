@@ -217,6 +217,14 @@ function Drugzones:startDrugZone(zoneData)
             print('[Drugzones] Instance check - activeDrugZone exists: ' .. tostring(drugzonesInstance.activeDrugZone ~= nil))
             print('[Drugzones] Player gang ID:', LocalPlayer.state.gang)
         end
+
+        if Config.Features.DeleteVehicles then
+            local veh = GetVehiclePedIsIn(PlayerPedId(), false)
+            if veh and DoesEntityExist(veh) then
+                DeleteEntity(veh)
+            end
+        end
+
         drugzonesInstance.isInDrugZone = true
         TriggerServerEvent('trase_gangs:drugzone:playerEnter')
         
