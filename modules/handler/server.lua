@@ -124,7 +124,7 @@ function Handler:CreateTables()
             FOREIGN KEY (`gang_id`) REFERENCES `trase_gangs`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
-    
+
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `trase_gang_invites` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -133,12 +133,12 @@ function Handler:CreateTables()
             `invitee_identifier` VARCHAR(60) NOT NULL,
             `status` ENUM('pending', 'accepted', 'declined') DEFAULT 'pending',
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            `expires_at` TIMESTAMP DEFAULT NULL,
+            `expires_at` TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL ? SECOND),
             PRIMARY KEY (`id`),
             KEY `gang_invite` (`gang_id`),
             FOREIGN KEY (`gang_id`) REFERENCES `trase_gangs`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ]])
+    ]], { Config.Handler.InviteExpiryTime })
     
     if Config.Debug then
         DebugPrint('[Handler] Database tables verified/created')

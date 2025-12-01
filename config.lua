@@ -1,7 +1,7 @@
 Config = { Strings = {} }
 
 Config.Language = 'en' -- Set the language locale here
-Config.Debug = false -- Enable debug prints
+Config.Debug = true -- Enable debug prints & commands (warning: do not turn this on in production)
 Config.InteractionType = 'ox_lib' -- ox_lib or ox_target
 
 Config.Framework = 'auto' -- 'esx', 'qbcore', 'standalone', or 'auto' to detect

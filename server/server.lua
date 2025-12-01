@@ -124,83 +124,85 @@ end
 
 beginSetup()
 
-RegisterCommand('gang:addtest', function(source, args, rawCommand)
-    local Handler = exports['trase_gangs']:GetServerHandler()
-    
-    local gangId = tonumber(args[1]) or 1
-    local count = tonumber(args[2]) or 5
-    
-    local gang = Handler.gangs[gangId]
-    if not gang then
-        if source > 0 then
-            TriggerClientEvent('chat:addMessage', source, {
-                color = {255, 0, 0},
-                args = {'[Gang System]', 'Gang ID ' .. gangId .. ' not found!'}
-            })
-        else
-            DoPrint('error', 'Gang ID ' .. gangId .. ' not found!')
-        end
-        return
-    end
-    
-    local lowestRank = nil
-    local lowestGrade = 999
-    for _, rank in pairs(gang.ranks) do
-        if rank.grade < lowestGrade then
-            lowestGrade = rank.grade
-            lowestRank = rank
-        end
-    end
-    
-    if not lowestRank then
-        if source > 0 then
-            TriggerClientEvent('chat:addMessage', source, {
-                color = {255, 0, 0},
-                args = {'[Gang System]', 'No ranks found in this gang!'}
-            })
-        else
-            DoPrint('error', 'No ranks found in this gang!')
-        end
-        return
-    end
-    
-    local added = 0
-    for i = 1, count do
-        local identifier = 'test_member_' .. string.format('%03d', math.random(100, 999))
+if Config.Debug then
+    RegisterCommand('gang:addtest', function(source, args, rawCommand)
+        local Handler = exports['trase_gangs']:GetServerHandler()
         
-        if not Handler.playerGangs[identifier] then
-            local testName = 'Test Member ' .. string.format('%03d', math.random(100, 999))
-            MySQL.insert.await([[
-                INSERT INTO trase_gang_members (gang_id, identifier, name, rank_id)
-                VALUES (?, ?, ?, ?)
-            ]], {gangId, identifier, testName, lowestRank.id})
-            
-            MySQL.insert.await([[
-                INSERT INTO trase_gang_member_stats (gang_id, identifier, turf_kills, turf_deaths, drugzone_kills, drugzone_deaths, gangwar_kills, gangwar_deaths)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ]], {gangId, identifier, math.random(0, 20), math.random(0, 10), math.random(0, 15), math.random(0, 8), math.random(0, 25), math.random(0, 12)})
-            
-            gang.members[identifier] = {
-                identifier = identifier,
-                name = testName,
-                rank_id = lowestRank.id,
-                joined_at = os.date('%Y-%m-%d %H:%M:%S')
-            }
-            Handler.playerGangs[identifier] = gangId
-            
-            added = added + 1
+        local gangId = tonumber(args[1]) or 1
+        local count = tonumber(args[2]) or 5
+        
+        local gang = Handler.gangs[gangId]
+        if not gang then
+            if source > 0 then
+                TriggerClientEvent('chat:addMessage', source, {
+                    color = {255, 0, 0},
+                    args = {'[Gang System]', 'Gang ID ' .. gangId .. ' not found!'}
+                })
+            else
+                DoPrint('error', 'Gang ID ' .. gangId .. ' not found!')
+            end
+            return
         end
+        
+        local lowestRank = nil
+        local lowestGrade = 999
+        for _, rank in pairs(gang.ranks) do
+            if rank.grade < lowestGrade then
+                lowestGrade = rank.grade
+                lowestRank = rank
+            end
+        end
+        
+        if not lowestRank then
+            if source > 0 then
+                TriggerClientEvent('chat:addMessage', source, {
+                    color = {255, 0, 0},
+                    args = {'[Gang System]', 'No ranks found in this gang!'}
+                })
+            else
+                DoPrint('error', 'No ranks found in this gang!')
+            end
+            return
+        end
+        
+        local added = 0
+        for i = 1, count do
+            local identifier = 'test_member_' .. string.format('%03d', math.random(100, 999))
+            
+            if not Handler.playerGangs[identifier] then
+                local testName = 'Test Member ' .. string.format('%03d', math.random(100, 999))
+                MySQL.insert.await([[
+                    INSERT INTO trase_gang_members (gang_id, identifier, name, rank_id)
+                    VALUES (?, ?, ?, ?)
+                ]], {gangId, identifier, testName, lowestRank.id})
+                
+                MySQL.insert.await([[
+                    INSERT INTO trase_gang_member_stats (gang_id, identifier, turf_kills, turf_deaths, drugzone_kills, drugzone_deaths, gangwar_kills, gangwar_deaths)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ]], {gangId, identifier, math.random(0, 20), math.random(0, 10), math.random(0, 15), math.random(0, 8), math.random(0, 25), math.random(0, 12)})
+                
+                gang.members[identifier] = {
+                    identifier = identifier,
+                    name = testName,
+                    rank_id = lowestRank.id,
+                    joined_at = os.date('%Y-%m-%d %H:%M:%S')
+                }
+                Handler.playerGangs[identifier] = gangId
+                
+                added = added + 1
+            end
+        end
+        
+        if source > 0 then
+            TriggerClientEvent('chat:addMessage', source, {
+                color = {0, 255, 0},
+                args = {'[Gang System]', 'Added ' .. added .. ' test members to ' .. gang.label}
+            })
+        else
+            DoPrint('success', 'Added ' .. added .. ' test members to ' .. gang.label)
     end
-    
-    if source > 0 then
-        TriggerClientEvent('chat:addMessage', source, {
-            color = {0, 255, 0},
-            args = {'[Gang System]', 'Added ' .. added .. ' test members to ' .. gang.label}
-        })
-    else
-        DoPrint('success', 'Added ' .. added .. ' test members to ' .. gang.label)
+    end, false)
 end
-end, false)
 
 local function GetPrimaryIdentifier(src)
     local ids = GetPlayerIdentifiers(src)
