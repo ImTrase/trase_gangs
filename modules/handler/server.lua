@@ -303,9 +303,9 @@ function Handler:CreateGang(data)
     
     MySQL.insert.await('INSERT INTO trase_gang_stats (gang_id) VALUES (?)', {insertId})
     
-    self:AddMember(insertId, data.owner, 4, data.owner, true)
     
     self:LoadAllGangs()
+    self:AddMember(insertId, data.owner, 4, data.owner, true)
     self:RegisterStash(insertId, data.label or data.name)
     
     self:AddAuditLog(insertId, data.owner, 'gang_created', nil, 'Gang created')
@@ -340,6 +340,7 @@ end
 function Handler:AddMember(gangId, identifier, rankGrade, actorIdentifier, skipInvite, force)
     local gang = self.gangs[gangId]
     if not gang then
+        DebugPrint(string.format('[Handler] Failed to set gang %s', gangId))
         return false, 'gang_not_found'
     end
     
@@ -400,6 +401,9 @@ function Handler:AddMember(gangId, identifier, rankGrade, actorIdentifier, skipI
     }
     self.playerGangs[identifier] = gangId
     
+    if Config.Debug then 
+        DebugPrint(string.format('[Handler] Player gangs: %s', json.encode(self.playerGangs)))
+    end
     if not skipInvite then
         self:AddAuditLog(gangId, actorIdentifier, 'member_added', identifier, 'Member added to gang')
     end
