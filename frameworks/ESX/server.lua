@@ -78,6 +78,8 @@ function GiveItem(source, item, amount)
         local xPlayer = ESX.GetPlayerFromId(source)
         if item == 'money' then
             xPlayer.addMoney(amount, "Trase_gangs")
+        elseif item == 'black_money' or item == 'dirty_money' then
+            xPlayer.addAccountMoney('black_money', amount)
         elseif string.find(item, 'weapon_') then
             xPlayer.addWeapon(item, 250)
         else

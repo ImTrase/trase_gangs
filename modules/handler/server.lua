@@ -422,6 +422,11 @@ function Handler:AddMember(gangId, identifier, rankGrade, actorIdentifier, skipI
     }
     self.playerGangs[identifier] = gangId
     
+    local targetPlayer = GetPlayerFromIdentifier(identifier)
+    if targetPlayer then
+        Player(targetPlayer.source).state.gang = gang
+    end
+
     if Config.Debug then 
         DebugPrint(string.format('[Handler] Player gangs: %s', json.encode(self.playerGangs)))
     end
