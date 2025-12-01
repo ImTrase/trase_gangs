@@ -49,7 +49,7 @@ function Turfs:StartTurf(turfName, turfCfg)
 			gangs = {},
 			players = {},
 			playersInside = {},
-			winner = nil
+			winner = nil,
 		}
 
 		if AlertServer then
@@ -107,6 +107,15 @@ function Turfs:EndTurf()
 
 		if AlertServer then
 			AlertServer(-1, "Turf " .. self.activeTurf .. " ended! Winner: " .. winnerName)
+		end
+
+		if Config.Features.Turfs.WinnerRewards.Enabled then
+			local OnlineGangMembers = Handler:GetOnlineGangMembers(winnerGangId)
+			for _, id in pairs(OnlineGangMembers) do -- k2
+				for item, amount in pairs(Config.Features.Turfs.WinnerRewards.Rewards) do
+					GiveItem(id, item, amount)
+				end
+			end
 		end
 
 		TriggerClientEvent('trase_gangs:turfs:winner', -1, {

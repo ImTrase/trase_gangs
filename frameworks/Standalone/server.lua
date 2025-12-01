@@ -82,3 +82,11 @@ function AlertServer(target, message)
         args = {"SYSTEM", message}
     })
 end
+
+function GiveItem(source, item, amount)
+    if GetResourceState('ox_inventory') == 'started' then
+        exports.ox_inventory:AddItem(source, item, amount)
+    else
+        print('I need to setup my inventory for trase_gangs frameworks/standalone/server.lua')
+    end
+end

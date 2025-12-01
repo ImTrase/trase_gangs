@@ -250,6 +250,21 @@ function Handler:LoadAllGangs()
     end
 end
 
+function Handler:GetOnlineGangMembers(gangId)
+    local gang = self.gangs[gangId]
+    if not gang then return false, 'gang_not_found' end
+    local ogm = {}
+    for k,v in pairs(gang.members) do
+        local m = GetPlayerFromIdentifier(k)
+        if not m then goto continue end
+        local n = GetPlayerName(m.source)
+        if not n or n == 'Invalid' then goto continue end
+        ogm[k] = m.source
+        ::continue::
+    end
+    return ogm
+end
+
 function Handler:CreateGang(data)
     if Config.Debug then
         DebugPrint('[Handler] Creating gang: ' .. data.name)

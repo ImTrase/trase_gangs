@@ -44,6 +44,10 @@ function Drugzones:StartZone(zoneName, zoneConfig)
         AlertServer(-1, zoneName .. " DrugZone is starting in 10 Seconds get there now and take it over")
     end
 
+    if zoneConfig.WinnerRewards.Enabled then
+        self.winnerRewards = zoneConfig.WinnerRewards.Rewards
+    end
+
     SetTimeout(10000, function()
         self.isStarting = false
         if self.activeZone then return end
@@ -58,7 +62,7 @@ function Drugzones:StartZone(zoneName, zoneConfig)
             gangs = {},
             players = {},
             playersInside = {},
-            winner = nil
+            winner = nil,
         }
 
         if AlertServer then
@@ -83,6 +87,7 @@ function Drugzones:StartZone(zoneName, zoneConfig)
             DebugPrint('[Drugzones Server] Drug zone started successfully')
         end
     end)
+
 
     return true, { message = "DrugZone starting in 10 seconds" }
 end
@@ -373,11 +378,21 @@ function Drugzones:DeclareWinner(gangId)
         end
     end
 
+    if self.winnerRewards then 
+        local OnlineGangMembers = Handler:GetOnlineGangMembers(gangId)
+        for _, id in pairs(OnlineGangMembers) do -- k2
+            for item, amount in pairs(self.winnerRewards) do
+                GiveItem(id, item, amount)
+            end
+        end
+    end
+
     TriggerClientEvent('trase_gangs:drugzone:winner', -1, {
         gangId = gangId,
         gangName = gangName,
         points = self.zoneData.gangs[gangId].points
     })
+
 
     SetTimeout(5000, function()
         self:EndZone()

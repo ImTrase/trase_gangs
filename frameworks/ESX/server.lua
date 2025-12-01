@@ -70,3 +70,18 @@ function AlertServer(target, message)
         args = {"SYSTEM", message}
     })
 end
+
+function GiveItem(source, item, amount)
+    if GetResourceState('ox_inventory') == 'started' then
+        exports.ox_inventory:AddItem(source, item, amount)
+    else
+        local xPlayer = ESX.GetPlayerFromId(source)
+        if item == 'money' then
+            xPlayer.addMoney(amount, "Trase_gangs")
+        elseif string.find(item, 'weapon_') then
+            xPlayer.addWeapon(item, 250)
+        else
+            xPlayer.addInventoryItem(tostring(item), tonumber(amount))
+        end
+    end
+end

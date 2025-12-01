@@ -90,3 +90,17 @@ function AlertServer(target, message)
         args = {"SYSTEM", message}
     })
 end
+
+function GiveItem(source, item, amount)
+    if GetResourceState('ox_inventory') == 'started' then
+        exports.ox_inventory:AddItem(source, item, amount)
+    else
+        local Player = QBCore.Functions.GetPlayer(source)
+        if not Player then return end
+        if item == 'cash' or item == 'money' then
+            Player.Functions.AddMoney('cash', 1000)
+        else
+            exports['qb-inventory']:AddItem(source, item, amount, false, false, 'trase_gangs:add')
+        end
+    end
+end

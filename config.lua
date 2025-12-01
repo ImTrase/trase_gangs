@@ -1,7 +1,7 @@
 Config = { Strings = {} }
 
 Config.Language = 'en' -- Set the language locale here
-Config.Debug = true -- Enable debug prints & commands (warning: do not turn this on in production)
+Config.Debug = false -- Enable debug prints & commands (warning: do not turn this on in production)
 Config.InteractionType = 'ox_lib' -- ox_lib or ox_target
 
 Config.Framework = 'auto' -- 'esx', 'qbcore', 'standalone', or 'auto' to detect
@@ -64,6 +64,13 @@ Config.Features.Drugzones = {
                     [3] = { label = 'Third Kill', rewards = { ['money'] = 15000 }},
                     [5] = { label = 'Fifth Kill', rewards = { ['money'] = 30000 }},
                 }
+            },
+            WinnerRewards = { -- Rewards the entire gang
+                Enabled = true,
+                Rewards = {
+                    ['money'] = 10000,
+                    ['water'] = 1
+                }
             }
         }
     },
@@ -71,7 +78,7 @@ Config.Features.Drugzones = {
 
 Config.Features.Turfs = {
     Enabled = true,
-    Duration = 90,
+    Duration = 5,
     Cooldown = 1800, -- Cooldown in seconds before the same turf can be started again
     DrawDistance = 100.0,
     MarkerType = 1,
@@ -90,6 +97,14 @@ Config.Features.Turfs = {
             [3] = { label = 'Third Kill', rewards = { ['money'] = 15000 }},
             [5] = { label = 'Fifth Kill', rewards = { ['money'] = 30000 }},
         }
+    },
+    WinnerRewards = { -- Rewards the entire gang
+        Enabled = true,
+        Rewards = {
+            ['money'] = 10000,
+            ['water'] = 1,
+            ['weapon_pistol'] = 1,
+        }
     }
 }
 
@@ -98,7 +113,8 @@ Config.Features.GangWars = {
     KillFeed = true,
     MinWager = 0,
     MaxWager = 100000,
-    TargetKills = 50
+    TargetKills = 50,
+    AllowItems = false -- [Coming Soon]
 }
 
 Config.Features.Leaderboards = {
