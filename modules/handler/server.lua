@@ -1390,8 +1390,9 @@ lib.callback.register('trase_gangs:server:kickMember', function(source, identife
     local success, err = Handler:RemoveMember(gang.id, identifer, xPlayer.identifier)
     
     if success then
-        local targetPlayer = GetPlayerFromIdentifier(xPlayer.identifier)
+        local targetPlayer = GetPlayerFromIdentifier(identifer)
         if targetPlayer then
+            Player(targetPlayer.source).state.gang = nil
             TriggerClientEvent('trase_gangs:client:gangRemoved', targetPlayer.source)
         end
     end
@@ -1532,8 +1533,9 @@ lib.callback.register('trase_gangs:server:acceptInvite', function(source, invite
     if success then
         local gang = Handler:GetPlayerGang(xPlayer.identifier)
         if Config.Debug then
-            DebugPrint('[AcceptInvite] Sending gang update to ' .. xPlayer.identifier)
             if gang then
+                DebugPrint('[AcceptInvite] Sending gang update to ' .. xPlayer.identifier)
+                Player(source).state.gang = gang
                 DebugPrint('[AcceptInvite] Gang: ' .. gang.label .. ' Stash: ' .. tostring(gang.stash_coords))
             end
         end
@@ -1573,6 +1575,7 @@ lib.callback.register('trase_gangs:server:leaveGang', function(source)
     local success, err = Handler:RemoveMember(gang.id, xPlayer.identifier, xPlayer.identifier)
     
     if success then
+        Player(source).state.gang = nil
         TriggerClientEvent('trase_gangs:client:gangRemoved', source)
     end
     

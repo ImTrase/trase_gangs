@@ -70,7 +70,7 @@ Config.Features.Drugzones = {
 
 Config.Features.Turfs = {
     Enabled = true,
-    Duration = 30,
+    Duration = 90,
     Cooldown = 1800, -- Cooldown in seconds before the same turf can be started again
     DrawDistance = 100.0,
     MarkerType = 1,
