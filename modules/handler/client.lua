@@ -801,17 +801,19 @@ RegisterNUICallback('fetchTheme', function(_, cb)
     end
 end)
 
-RegisterCommand('debuggang', function()
-    if Handler.currentGang then
-        print('^2[DebugGang] ^7Current Gang: ' .. (Handler.currentGang.label or 'Unknown') .. ' (ID: ' .. (Handler.currentGang.id or 'nil') .. ')')
-        print('^2[DebugGang] ^7Stash Coords: ' .. json.encode(Handler.currentGang.stash_coords))
-        if Handler.currentGang.stash_coords then
-            print('^2[DebugGang] ^7Coords Type: ' .. type(Handler.currentGang.stash_coords))
+if Config.Debug then
+    RegisterCommand('debuggang', function()
+        if Handler.currentGang then
+            print('^2[DebugGang] ^7Current Gang: ' .. (Handler.currentGang.label or 'Unknown') .. ' (ID: ' .. (Handler.currentGang.id or 'nil') .. ')')
+            print('^2[DebugGang] ^7Stash Coords: ' .. json.encode(Handler.currentGang.stash_coords))
+            if Handler.currentGang.stash_coords then
+                print('^2[DebugGang] ^7Coords Type: ' .. type(Handler.currentGang.stash_coords))
+            end
+        else
+            print('^2[DebugGang] ^7Not in a gang or gang data not loaded.')
         end
-    else
-        print('^2[DebugGang] ^7Not in a gang or gang data not loaded.')
-    end
-end, false)
+    end, false)
+end
 
 RegisterNUICallback('setMemberRank', function(data, cb)
     DebugPrint('[Client] setMemberRank callback triggered')

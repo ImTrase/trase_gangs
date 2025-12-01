@@ -68,8 +68,10 @@ Config.Features.Drugzones = {
             WinnerRewards = { -- Rewards the entire gang
                 Enabled = true,
                 Rewards = {
-                    ['money'] = 10000,
-                    ['water'] = 1
+                    ['money'] = 1,
+                    ['black_money'] = 1,
+                    ['water'] = 1,
+                    ['weapon_pistol'] = 1,
                 }
             }
         }
@@ -78,7 +80,7 @@ Config.Features.Drugzones = {
 
 Config.Features.Turfs = {
     Enabled = true,
-    Duration = 5,
+    Duration = 180,
     Cooldown = 1800, -- Cooldown in seconds before the same turf can be started again
     DrawDistance = 100.0,
     MarkerType = 1,
@@ -101,7 +103,8 @@ Config.Features.Turfs = {
     WinnerRewards = { -- Rewards the entire gang
         Enabled = true,
         Rewards = {
-            ['money'] = 10000,
+            ['money'] = 1,
+            ['black_money'] = 1,
             ['water'] = 1,
             ['weapon_pistol'] = 1,
         }
