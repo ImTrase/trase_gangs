@@ -184,6 +184,12 @@ function Handler:LoadAllGangs()
              DebugPrint('[LoadAllGangs] Raw stash_coords: ' .. tostring(gang.stash_coords))
         end
 
+        if (gang.max_members < Config.Handler.DefaultMaxMembers) or (gang.max_members > Config.Handler.DefaultMaxMembers) then -- and not gang_unlocks_maxmembers
+            local query = string.format('UPDATE trase_gangs SET max_members = ? WHERE id = ?')
+            MySQL.query.await(query, {Config.Handler.DefaultMaxMembers, gang.id})
+            gang.max_members = Config.Handler.DefaultMaxMembers
+        end
+
         if gang.stash_coords and type(gang.stash_coords) == 'string' and gang.stash_coords ~= '' then
             local status, result = pcall(json.decode, gang.stash_coords)
             if status then
@@ -417,16 +423,16 @@ function Handler:RemoveMember(gangId, identifier, actorIdentifier)
         return false, 'gang_not_found'
     end
     
-    -- if gang.owner_identifier == identifier then
-    --     return false, 'cannot_kick_owner'
-    -- end
+    if gang.owner_identifier == identifier then -- :)
+        return false, 'cannot_kick_owner'
+    end
     
     MySQL.query.await('DELETE FROM trase_gang_members WHERE gang_id = ? AND identifier = ?', {gangId, identifier})
     
     gang.members[identifier] = nil
     self.playerGangs[identifier] = nil
     
-    self:AddAuditLog(gangId, actorIdentifier, 'member_removed', identifier, 'Member removed from gang')
+    self:AddAuditLog(gangId, identifier, 'member_removed', actorIdentifier, 'Member removed from gang')
     
     return true
 end
@@ -1356,7 +1362,7 @@ lib.callback.register('trase_gangs:server:inviteMember', function(source, target
     if success then
         SendNotification(targetServerId, {
             title = 'Gang Invite Recieved',
-            description = string.format('You have been invited to join %s by %s', gang.label, xPlayer.getName())
+            description = string.format('You have been invited to join %s by %s | Use /ganginvites', gang.label, xPlayer.getName())
         })
         TriggerClientEvent('trase_gangs:client:inviteReceived', targetServerId, {
             gang_id = gang.id,
@@ -1368,7 +1374,7 @@ lib.callback.register('trase_gangs:server:inviteMember', function(source, target
     return success, err
 end)
 
-lib.callback.register('trase_gangs:server:kickMember', function(source, identifier)
+lib.callback.register('trase_gangs:server:kickMember', function(source, identifer)
     local xPlayer = GetPlayerFromId(source)
     if not xPlayer then return false, 'player_not_found' end
     
@@ -1381,10 +1387,10 @@ lib.callback.register('trase_gangs:server:kickMember', function(source, identifi
         return false, 'not_in_gang'
     end
     
-    local success, err = Handler:RemoveMember(gang.id, identifier, xPlayer.identifier)
+    local success, err = Handler:RemoveMember(gang.id, identifer, xPlayer.identifier)
     
     if success then
-        local targetPlayer = GetPlayerFromIdentifier(identifier)
+        local targetPlayer = GetPlayerFromIdentifier(xPlayer.identifier)
         if targetPlayer then
             TriggerClientEvent('trase_gangs:client:gangRemoved', targetPlayer.source)
         end

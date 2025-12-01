@@ -158,20 +158,21 @@
   }
 
   async function promoteMember() {
-    if (!selectedMember || !selectedRankId) return;
+    if (!selectedMember || !selectedRankGrade) return;
 
-    const newRank = ranks.find(r => r.id === selectedRankId);
+    const newRank = ranks.find(r => r.grade === selectedRankGrade);
+    console.log(newRank);
     if (!newRank) return;
 
     try {
-      await fetchNui('promoteMember', { 
-        memberId: selectedMember.id, 
-        rankId: selectedRankId 
+      await fetchNui('setMemberRank', { 
+        memberId: selectedMember.identifier, 
+        rankGrade: selectedRankGrade 
       });
       
       members = members.map(m => 
-        m.id === selectedMember.id 
-          ? { ...m, rankId: selectedRankId, rankName: newRank.name }
+        m.id === selectedMember.identifier 
+          ? { ...m, rankGrade: selectedRankGrade, rankName: newRank.name }
           : m
       );
       closePromoteModal();
@@ -179,8 +180,8 @@
       console.error('Failed to promote member:', e);
       // Update locally anyway for development
       members = members.map(m => 
-        m.id === selectedMember.id 
-          ? { ...m, rankId: selectedRankId, rankName: newRank.name }
+        m.id === selectedMember.identifier 
+          ? { ...m, rankGrade: selectedRankGrade, rankName: newRank.name }
           : m
       );
       closePromoteModal();
@@ -188,20 +189,20 @@
   }
 
   async function demoteMember() {
-    if (!selectedMember || !selectedRankId) return;
+    if (!selectedMember || !selectedRankGrade) return;
 
-    const newRank = ranks.find(r => r.id === selectedRankId);
+    const newRank = ranks.find(r => r.grade === selectedRankGrade);
     if (!newRank) return;
 
     try {
-      await fetchNui('demoteMember', { 
-        memberId: selectedMember.id, 
-        rankId: selectedRankId 
+      await fetchNui('setMemberRank', { 
+        memberId: selectedMember.identifier, 
+        rankGrade: selectedRankGrade 
       });
       
       members = members.map(m => 
-        m.id === selectedMember.id 
-          ? { ...m, rankId: selectedRankId, rankName: newRank.name }
+        m.id === selectedMember.identifier 
+          ? { ...m, rankGrade: selectedRankGrade, rankName: newRank.name }
           : m
       );
       closeDemoteModal();
@@ -209,8 +210,8 @@
       console.error('Failed to demote member:', e);
       // Update locally anyway for development
       members = members.map(m => 
-        m.id === selectedMember.id 
-          ? { ...m, rankId: selectedRankId, rankName: newRank.name }
+        m.id === selectedMember.identifier 
+          ? { ...m, rankGrade: selectedRankGrade, rankName: newRank.name }
           : m
       );
       closeDemoteModal();
@@ -221,13 +222,14 @@
     if (!selectedMember) return;
 
     try {
-      await fetchNui('kickMember', { memberId: selectedMember.id });
-      members = members.filter(m => m.id !== selectedMember.id);
+      console.log(selectedMember)
+      await fetchNui('kickMember', { memberId: selectedMember.identifier });
+      members = members.filter(m => m.id !== selectedMember.identifier);
       closeKickModal();
     } catch (e) {
       console.error('Failed to kick member:', e);
       // Delete locally anyway for development
-      members = members.filter(m => m.id !== selectedMember.id);
+      members = members.filter(m => m.id !== selectedMember.identifier);
       closeKickModal();
     }
   }
