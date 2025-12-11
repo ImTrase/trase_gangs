@@ -371,10 +371,15 @@ function Drugzones:DeclareWinner(gangId)
     local Handler = exports['trase_gangs']:GetHandler()
     if Handler then
         Handler:UpdateGangStats(gangId, 'drugzone_wins', 1)
+        
+        local repAmount = Config.Handler.ReputationRewards.DrugzoneWin or 75
+        Handler:AddReputation(gangId, repAmount, 'drugzone_win')
+
         for gid, _ in pairs(self.zoneData.gangs) do
             if gid ~= gangId then
                 Handler:UpdateGangStats(gid, 'drugzone_losses', 1)
             end
+            Handler:RefreshGang(gid)
         end
     end
 

@@ -222,6 +222,9 @@ function Drugzones:startDrugZone(zoneData)
             local veh = GetVehiclePedIsIn(PlayerPedId(), false)
             if veh and DoesEntityExist(veh) then
                 DeleteEntity(veh)
+                if lib and lib.notify then
+                    lib.notify({ title = 'Zone Restriction', description = 'You cannot have a vehicle in an active zone', type = 'error' })
+                end
             end
         end
 

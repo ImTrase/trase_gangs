@@ -10,6 +10,7 @@ function GangWars:constructor()
 end
 
 function GangWars:start(data)
+    print('[GangWars] Start called with data:', json.encode(data))
 	self.active = true
 	self.data = data
 	self.kills = { [data.gang1Id] = 0, [data.gang2Id] = 0 }
@@ -19,9 +20,20 @@ end
 
 function GangWars:showOverlay()
 	if not self.active then return end
+    print('[GangWars] Showing overlay')
+    
+    local g1 = self.data.gang1Id
+    local g2 = self.data.gang2Id
+    
+    local k1 = self.kills[g1] or self.kills[tostring(g1)] or 0
+    local k2 = self.kills[g2] or self.kills[tostring(g2)] or 0
+    
+    local n1 = self.data.names and (self.data.names[g1] or self.data.names[tostring(g1)]) or ('Gang '..g1)
+    local n2 = self.data.names and (self.data.names[g2] or self.data.names[tostring(g2)]) or ('Gang '..g2)
+
 	local leaderboard = {
-		{ position = 1, name = self.data.names[self.data.gang1Id] or ('Gang '..self.data.gang1Id), value = (self.kills[self.data.gang1Id] or 0)..' / '..self.data.targetKills },
-		{ position = 2, name = self.data.names[self.data.gang2Id] or ('Gang '..self.data.gang2Id), value = (self.kills[self.data.gang2Id] or 0)..' / '..self.data.targetKills },
+		{ position = 1, name = n1, value = k1..' / '..self.data.targetKills },
+		{ position = 2, name = n2, value = k2..' / '..self.data.targetKills },
 	}
 	table.sort(leaderboard, function(a,b)
 		local av = tonumber(a.value:match('%d+')) or 0
@@ -99,8 +111,10 @@ function GangWars:registerEvents()
 			local victim = args[1]
 			local attacker = args[2]
 			local isFatal = args[6] == 1
+			print('[GangWars] gameEventTriggered - CEventNetworkEntityDamage, active:', self.active, 'isFatal:', isFatal)
 			if self.active and attacker == PlayerPedId() and IsPedAPlayer(victim) and isFatal then
 				local victimId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(victim))
+				print('[GangWars] Recording kill - victim server id:', victimId)
 				TriggerServerEvent('trase_gangs:gangwars:recordKill', victimId)
 			end
 		end

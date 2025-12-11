@@ -43,13 +43,20 @@ function GangWars:Start(gang1Id, gang2Id, opts)
 		return false, 'invalid_gangs'
 	end
 
+	-- Get Handler from exports
+	local Handler = exports['trase_gangs']:GetHandler()
+	if not Handler then
+		print('[GangWars] Failed to get Handler from exports')
+		return false, 'handler_not_found'
+	end
+
 	local target = (opts and opts.targetKills) or Config.Features.GangWars.TargetKills or 50
     local wager = (opts and opts.wager) or 0
 
 	self.active = true
 	print('[GangWars] Starting war between ' .. tostring(gang1Id) .. ' and ' .. tostring(gang2Id) .. ' targetKills: ' .. tostring(target))
-	local g1Label = (Handler and Handler.gangs and Handler.gangs[gang1Id] and (Handler.gangs[gang1Id].label or Handler.gangs[gang1Id].name)) or ('Gang '..tostring(gang1Id))
-	local g2Label = (Handler and Handler.gangs and Handler.gangs[gang2Id] and (Handler.gangs[gang2Id].label or Handler.gangs[gang2Id].name)) or ('Gang '..tostring(gang2Id))
+	local g1Label = (Handler.gangs and Handler.gangs[gang1Id] and (Handler.gangs[gang1Id].label or Handler.gangs[gang1Id].name)) or ('Gang '..tostring(gang1Id))
+	local g2Label = (Handler.gangs and Handler.gangs[gang2Id] and (Handler.gangs[gang2Id].label or Handler.gangs[gang2Id].name)) or ('Gang '..tostring(gang2Id))
 	self.data = {
 		startedAt = os.time(),
 		gangs = {},
@@ -93,16 +100,83 @@ end
 function GangWars:End(winnerGangId)
 	if not self.active then return end
 	
-	if winnerGangId then
-		local Handler = exports['trase_gangs']:GetHandler()
-		if Handler then
-			Handler:UpdateGangStats(winnerGangId, 'gangwar_wins', 1)
-			for gid, _ in pairs(self.data.gangs) do
-				if gid ~= winnerGangId then
-					Handler:UpdateGangStats(gid, 'gangwar_losses', 1)
-				end
-			end
+	local Handler = exports['trase_gangs']:GetHandler()
+	
+	-- Get gang IDs and scores for database update
+	local gang1Id, gang2Id
+	local gang1Score, gang2Score = 0, 0
+	local loserGangId
+	
+	for gid, g in pairs(self.data.gangs) do
+		if not gang1Id then
+			gang1Id = gid
+			gang1Score = g.kills or 0
+		else
+			gang2Id = gid
+			gang2Score = g.kills or 0
 		end
+		
+		if gid == winnerGangId then
+			-- This is the winner
+		else
+			loserGangId = gid
+		end
+	end
+	
+	-- Handle wager transfer
+	local wager = self.data.wager or 0
+	if wager > 0 and winnerGangId and loserGangId and Handler then
+		-- Withdraw from loser's bank and deposit to winner's bank
+		local withdrawSuccess = Handler:WithdrawBank(loserGangId, wager)
+		if withdrawSuccess then
+			Handler:DepositBank(winnerGangId, wager)
+			print('[GangWars] Transferred wager $' .. wager .. ' from gang ' .. loserGangId .. ' to gang ' .. winnerGangId)
+			
+			-- Add audit logs for wager transfer
+			local winnerName = self.data.gangs[winnerGangId] and self.data.gangs[winnerGangId].name or 'Unknown'
+			local loserName = self.data.gangs[loserGangId] and self.data.gangs[loserGangId].name or 'Unknown'
+			Handler:AddAuditLog(winnerGangId, 'system', 'gang_war_wager_won', nil, 'Won $' .. wager .. ' wager from ' .. loserName)
+			Handler:AddAuditLog(loserGangId, 'system', 'gang_war_wager_lost', nil, 'Lost $' .. wager .. ' wager to ' .. winnerName)
+		else
+			print('[GangWars] Failed to withdraw wager from losing gang ' .. loserGangId)
+		end
+	end
+	
+	if winnerGangId and Handler then
+		Handler:UpdateGangStats(winnerGangId, 'gangwar_wins', 1)
+		if loserGangId then
+			Handler:UpdateGangStats(loserGangId, 'gangwar_losses', 1)
+		end
+		
+		-- Add audit logs for both gangs
+		local winnerName = self.data.gangs[winnerGangId] and self.data.gangs[winnerGangId].name or 'Unknown'
+		local loserName = loserGangId and self.data.gangs[loserGangId] and self.data.gangs[loserGangId].name or 'Unknown'
+		
+		Handler:AddAuditLog(winnerGangId, 'system', 'gang_war_won', nil, 'Won gang war against ' .. loserName)
+		if loserGangId then
+			Handler:AddAuditLog(loserGangId, 'system', 'gang_war_lost', nil, 'Lost gang war against ' .. winnerName)
+		end
+	end
+	
+	-- Update database with war results
+	-- Find the active war in the database and update it
+	if gang1Id and gang2Id then
+		MySQL.update.await([[
+			UPDATE trase_gang_war_history 
+			SET status = 'completed', 
+				winner_gang_id = ?, 
+				gang_1_score = ?,
+				gang_2_score = ?,
+				ended_at = NOW()
+			WHERE status = 'active' 
+				AND ((gang_1_id = ? AND gang_2_id = ?) OR (gang_1_id = ? AND gang_2_id = ?))
+		]], {
+			winnerGangId,
+			gang1Score,
+			gang2Score,
+			gang1Id, gang2Id,
+			gang2Id, gang1Id
+		})
 	end
 
 	for gid, g in pairs(self.data.gangs) do
@@ -152,10 +226,35 @@ function GangWars:RecordKill(killerSrc, victimSrc)
 	if not self.active then return end
 	local killerGang = getPlayerGang(killerSrc)
 	local victimGang = getPlayerGang(victimSrc)
-	if not killerGang or not victimGang or killerGang == victimGang then return end
-	if not self.data.gangs[killerGang] or not self.data.gangs[victimGang] then return end
+	
+	-- Debug logging
+	print('[GangWars] RecordKill called - killer:', killerSrc, 'victim:', victimSrc)
+	print('[GangWars] Killer gang:', tostring(killerGang), 'Victim gang:', tostring(victimGang))
+	
+	if not killerGang or not victimGang then 
+		print('[GangWars] Missing gang for killer or victim')
+		return 
+	end
+	if killerGang == victimGang then 
+		print('[GangWars] Same gang - friendly fire, ignoring')
+		return 
+	end
+	
+	-- Normalize gang IDs to numbers to match self.data.gangs keys
+	killerGang = tonumber(killerGang)
+	victimGang = tonumber(victimGang)
+	
+	print('[GangWars] Normalized killer gang:', tostring(killerGang), 'victim gang:', tostring(victimGang))
+	print('[GangWars] Active gangs in war:', json.encode(self.data.gangs and (function() local keys = {} for k in pairs(self.data.gangs) do keys[#keys+1] = k end return keys end)() or {}))
+	
+	if not self.data.gangs[killerGang] or not self.data.gangs[victimGang] then 
+		print('[GangWars] One or both gangs not part of this war')
+		return 
+	end
 
 	self.data.gangs[killerGang].kills = self.data.gangs[killerGang].kills + 1
+	print('[GangWars] Kill recorded! Gang', killerGang, 'now has', self.data.gangs[killerGang].kills, 'kills')
+	
 	if self.data.gangs[killerGang].kills >= self.data.targetKills then
 		self:Broadcast()
 		self:End(killerGang)
@@ -176,11 +275,11 @@ lib.callback.register('trase_gangs:gangwars:isActive', function(source)
 	return GangWars.active, GangWars.data
 end)
 
-RegisterNetEvent('trase_gangs:gangwars:accept', function(gang1Id, gang2Id, targetKills)
+RegisterNetEvent('trase_gangs:gangwars:accept', function(gang1Id, gang2Id, targetKills, wager)
 	gang1Id = tonumber(gang1Id)
 	gang2Id = tonumber(gang2Id)
-	print('[GangWars] Received accept event, starting war for', tostring(gang1Id), tostring(gang2Id), 'target', tostring(targetKills))
-	GangWars:Start(gang1Id, gang2Id, { targetKills = targetKills })
+	print('[GangWars] Received accept event, starting war for', tostring(gang1Id), tostring(gang2Id), 'target', tostring(targetKills), 'wager', tostring(wager))
+	GangWars:Start(gang1Id, gang2Id, { targetKills = targetKills, wager = wager })
 end)
 
 RegisterNetEvent('trase_gangs:gangwars:recordKill', function(victimId)

@@ -877,6 +877,48 @@ function Handler:AddRevenue(gangId, amount)
     return true
 end
 
+function Handler:WithdrawBank(gangId, amount)
+    local gang = self.gangs[gangId]
+    if not gang then
+        return false, 'gang_not_found'
+    end
+    
+    local currentBank = gang.bank or 0
+    if currentBank < amount then
+        return false, 'insufficient_funds'
+    end
+    
+    gang.bank = currentBank - amount
+    
+    MySQL.query.await([[
+        UPDATE trase_gangs SET bank = ? WHERE id = ?
+    ]], {gang.bank, gangId})
+    
+    return true
+end
+
+function Handler:DepositBank(gangId, amount)
+    local gang = self.gangs[gangId]
+    if not gang then
+        return false, 'gang_not_found'
+    end
+    
+    gang.bank = (gang.bank or 0) + amount
+    gang.total_revenue = (gang.total_revenue or 0) + amount
+    
+    MySQL.query.await([[
+        UPDATE trase_gangs SET bank = ?, total_revenue = ? WHERE id = ?
+    ]], {gang.bank, gang.total_revenue, gangId})
+    
+    return true
+end
+
+function Handler:GetBankBalance(gangId)
+    local gang = self.gangs[gangId]
+    if not gang then return 0 end
+    return gang.bank or 0
+end
+
 function Handler:UpdateGangStats(gangId, statType, increment)
     local gang = self.gangs[gangId]
     if not gang then
@@ -893,6 +935,74 @@ function Handler:UpdateGangStats(gangId, statType, increment)
         string.format('UPDATE trase_gang_stats SET %s = ? WHERE gang_id = ?', statType),
         {gang.stats[statType], gangId}
     )
+    
+    return true
+end
+
+function Handler:RefreshGang(gangId)
+    local gang = self.gangs[gangId]
+    if not gang then return end
+    
+    -- Get all online members
+    local members = self:GetOnlineGangMembers(gangId)
+    for _, src in ipairs(members) do
+        TriggerClientEvent('trase_gangs:client:gangUpdated', src, gang)
+    end
+end
+
+function Handler:RefreshGangFromDB(gangId)
+    local gang = self.gangs[gangId]
+    if not gang then return false end
+    
+    -- Refresh gang stats from database
+    local stats = MySQL.single.await('SELECT * FROM trase_gang_stats WHERE gang_id = ?', {gangId})
+    if stats then
+        gang.stats = stats
+    end
+    
+    -- Refresh gang main data (reputation, bank, total_revenue)
+    local gangData = MySQL.single.await('SELECT reputation, bank, total_revenue FROM trase_gangs WHERE id = ?', {gangId})
+    if gangData then
+        gang.reputation = gangData.reputation or 0
+        gang.bank = gangData.bank or 0
+        gang.total_revenue = gangData.total_revenue or 0
+    end
+    
+    if Config.Debug then
+        DebugPrint('[Handler] Refreshed gang ' .. gangId .. ' from database')
+    end
+    
+    return true
+end
+
+function Handler:RefreshAllGangsFromDB()
+    -- Refresh all gang stats from database (efficient for leaderboards)
+    local allStats = MySQL.query.await('SELECT * FROM trase_gang_stats')
+    if allStats then
+        for _, stats in ipairs(allStats) do
+            local gang = self.gangs[stats.gang_id]
+            if gang then
+                gang.stats = stats
+            end
+        end
+    end
+    
+    -- Refresh all gang main data
+    local allGangs = MySQL.query.await('SELECT id, reputation, bank, total_revenue FROM trase_gangs')
+    if allGangs then
+        for _, gangData in ipairs(allGangs) do
+            local gang = self.gangs[gangData.id]
+            if gang then
+                gang.reputation = gangData.reputation or 0
+                gang.bank = gangData.bank or 0
+                gang.total_revenue = gangData.total_revenue or 0
+            end
+        end
+    end
+    
+    if Config.Debug then
+        DebugPrint('[Handler] Refreshed all gangs from database')
+    end
     
     return true
 end
@@ -1602,6 +1712,79 @@ lib.callback.register('trase_gangs:server:leaveGang', function(source)
     return success, err
 end)
 
+lib.callback.register('trase_gangs:server:gangBankTransaction', function(source, action, amount)
+    local xPlayer = GetPlayerFromId(source)
+    if not xPlayer then return false, 'player_not_found' end
+    
+    local gang = Handler:GetPlayerGang(xPlayer.identifier)
+    if not gang then
+        return false, 'not_in_gang'
+    end
+    
+    amount = tonumber(amount)
+    if not amount or amount <= 0 then
+        return false, 'invalid_amount'
+    end
+    
+    if action == 'deposit' then
+        -- Check if player has enough money
+        local playerMoney = xPlayer.getMoney()
+        if playerMoney < amount then
+            return false, 'insufficient_player_funds'
+        end
+        
+        -- Remove money from player
+        xPlayer.removeMoney(amount)
+        
+        -- Add to gang bank
+        Handler:DepositBank(gang.id, amount)
+        
+        -- Add audit log
+        Handler:AddAuditLog(gang.id, xPlayer.identifier, 'bank_deposit', nil, 'Deposited $' .. amount)
+        
+        if Config.Debug then
+            DebugPrint('[Handler] Player ' .. xPlayer.identifier .. ' deposited $' .. amount .. ' to gang ' .. gang.id)
+        end
+        
+        return true
+        
+    elseif action == 'withdraw' then
+        -- Check if gang has enough money
+        local gangBank = gang.bank or 0
+        if gangBank < amount then
+            return false, 'insufficient_gang_funds'
+        end
+        
+        -- Check if player has permission to withdraw (owner or has manage permission)
+        local isOwner = gang.owner_identifier == xPlayer.identifier
+        local hasPermission = Handler:HasPermission(xPlayer.identifier, 'manage_bank')
+        
+        if not isOwner and not hasPermission then
+            return false, 'no_permission'
+        end
+        
+        -- Remove from gang bank
+        local success = Handler:WithdrawBank(gang.id, amount)
+        if not success then
+            return false, 'withdrawal_failed'
+        end
+        
+        -- Add money to player
+        xPlayer.addMoney(amount)
+        
+        -- Add audit log
+        Handler:AddAuditLog(gang.id, xPlayer.identifier, 'bank_withdrawal', nil, 'Withdrew $' .. amount)
+        
+        if Config.Debug then
+            DebugPrint('[Handler] Player ' .. xPlayer.identifier .. ' withdrew $' .. amount .. ' from gang ' .. gang.id)
+        end
+        
+        return true
+    end
+    
+    return false, 'invalid_action'
+end)
+
 lib.callback.register('trase_gangs:server:getOnlineMembers', function(source)
     local xPlayer = GetPlayerFromId(source)
     if not xPlayer then return {} end
@@ -1658,6 +1841,9 @@ lib.callback.register('trase_gangs:server:getLeaderboard', function(source, cate
 end)
 
 lib.callback.register('trase_gangs:server:getLeaderboards', function(source, opts)
+    -- Refresh all gang data from database before building leaderboards
+    Handler:RefreshAllGangsFromDB()
+    
     local gangs = Handler:GetAllGangs()
     local maxEntries = (opts and opts.limit) or 25
 
@@ -1792,6 +1978,9 @@ RegisterCommand(Config.Commands.GangManage, function(source)
         })
         return
     end
+
+    -- Refresh gang data from database to ensure fresh stats and reputation
+    Handler:RefreshGangFromDB(gang.id)
 
     DebugPrint('[GangManage] Player in gang:', gang.name, 'Owner:', gang.owner_identifier)
     
@@ -2212,6 +2401,14 @@ lib.callback.register('trase_gangs:server:sendGangWarInvite', function(source, d
     local wagerAmount = data.wager or 0
     local killsToWin = data.killsToWin or 50
     
+    -- Check if gang has enough bank balance for the wager
+    if wagerAmount > 0 then
+        local gangBank = gang.bank or 0
+        if gangBank < wagerAmount then
+            return false, 'insufficient_funds'
+        end
+    end
+    
     local targetGang = MySQL.query.await('SELECT id, label FROM trase_gangs WHERE id = ?', {targetGangId})
     if not targetGang or #targetGang == 0 then
         return false, 'gang_not_found'
@@ -2315,6 +2512,15 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
 
     request = request[1]
     
+    -- Check if accepting gang has enough bank balance for the wager
+    local wagerAmount = request.wager_amount or 0
+    if wagerAmount > 0 then
+        local gangBank = gang.bank or 0
+        if gangBank < wagerAmount then
+            return false, 'insufficient_funds'
+        end
+    end
+    
     MySQL.update.await('UPDATE trase_gang_war_requests SET status = "accepted" WHERE id = ?', {requestId})
     
     local warId = MySQL.insert.await('INSERT INTO trase_gang_war_history (request_id, gang_1_id, gang_2_id, wager_amount, status) VALUES (?, ?, ?, ?, "active")', {
@@ -2341,6 +2547,8 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
         end
         
         Handler:AddAuditLog(gang.id, identifier, 'gang_war_accepted', nil, 'Accepted war request')
+        -- Also add audit log for the challenger gang
+        Handler:AddAuditLog(request.challenger_gang_id, 'system', 'gang_war_started', nil, 'Gang war accepted by ' .. gang.label)
 
         -- Trigger the gang war start event on the gangwars server module so it starts the war
         -- Use configured targetKills if available
@@ -2348,16 +2556,10 @@ lib.callback.register('trase_gangs:server:acceptGangWarRequest', function(source
         local wager = request.wager_amount or 0
         local c1 = tonumber(request.challenger_gang_id)
         local c2 = tonumber(gang.id)
-        -- Attempt to start the war using the GangWars server module directly
-        local success, startResult = pcall(function()
-            local GangWarsModule = require('modules.gangwars.server')
-            return GangWarsModule:Start(c1, c2, { targetKills = targetKills, wager = wager, gang1Name = Handler.gangs[c1] and Handler.gangs[c1].label or nil, gang2Name = gang.label })
-        end)
-        if not success then
-            DebugPrint('[Handler] Failed to call GangWars:Start: ' .. tostring(startResult))
-        else
-            DebugPrint('[Handler] GangWars:Start invoked; result: ' .. tostring(startResult and (type(startResult) ~= 'table' and tostring(startResult) or 'table')))
-        end
+        
+        -- Trigger the gangwars accept event to start the war
+        DebugPrint('[Handler] Triggering gangwars:accept event for gangs ' .. tostring(c1) .. ' vs ' .. tostring(c2) .. ' with targetKills: ' .. tostring(targetKills))
+        TriggerEvent('trase_gangs:gangwars:accept', c1, c2, targetKills, wager)
 
         return true, 'war_started'
     end

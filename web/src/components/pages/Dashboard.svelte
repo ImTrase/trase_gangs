@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../utils/translate';
-  import { fade, fly } from 'svelte/transition';
+  import { fade, fly, scale } from 'svelte/transition';
   import { fetchNui } from '../../utils/fetchNui';
 
   // Icons
@@ -11,6 +11,9 @@
   import UserCheckIcon from "virtual:icons/mdi/account-check";
   import CashIcon from "virtual:icons/mdi/currency-usd";
   import TrendingUpIcon from "virtual:icons/mdi/trending-up";
+  import BankIcon from "virtual:icons/mdi/bank";
+  import ArrowDownIcon from "virtual:icons/mdi/arrow-down";
+  import ArrowUpIcon from "virtual:icons/mdi/arrow-up";
 
   // Accept gangData prop from parent
   export let gangData: any = {
@@ -29,10 +32,78 @@
   $: stats = gangData.stats || {};
   $: onlineMembersCount = members.filter((m: any) => m.online).length;
   $: totalMembers = members.length;
+  $: gangBank = gang.bank || 0;
+
+  // Bank transaction state
+  let showBankModal = false;
+  let bankAction: 'deposit' | 'withdraw' = 'deposit';
+  let bankAmount = '';
+  let bankLoading = false;
+  let bankError = '';
 
   onMount(async () => {
     console.log('[DashboardPage] Received gangData:', gangData);
   });
+
+  function openBankModal(action: 'deposit' | 'withdraw') {
+    bankAction = action;
+    bankAmount = '';
+    bankError = '';
+    showBankModal = true;
+  }
+
+  function closeBankModal() {
+    showBankModal = false;
+    bankAmount = '';
+    bankError = '';
+  }
+
+  async function handleBankTransaction() {
+    const amount = parseInt(bankAmount);
+    if (!amount || amount <= 0) {
+      bankError = 'Please enter a valid amount';
+      return;
+    }
+
+    if (bankAction === 'withdraw' && amount > gangBank) {
+      bankError = 'Insufficient gang funds';
+      return;
+    }
+
+    bankLoading = true;
+    bankError = '';
+
+    try {
+      const response = await fetchNui('gangBankTransaction', {
+        action: bankAction,
+        amount: amount
+      });
+
+      if (response?.success) {
+        // Update local gang bank value
+        if (bankAction === 'deposit') {
+          gang.bank = (gang.bank || 0) + amount;
+        } else {
+          gang.bank = (gang.bank || 0) - amount;
+        }
+        gangData.gang = gang;
+        closeBankModal();
+        
+        fetchNui('trase_gangs:notify', {
+          title: bankAction === 'deposit' ? 'Deposit Successful' : 'Withdrawal Successful',
+          description: `$${amount.toLocaleString()} has been ${bankAction === 'deposit' ? 'deposited to' : 'withdrawn from'} the gang bank`,
+          type: 'success'
+        });
+      } else {
+        bankError = response?.error || 'Transaction failed';
+      }
+    } catch (e) {
+      bankError = 'Transaction failed';
+      console.error('Bank transaction error:', e);
+    } finally {
+      bankLoading = false;
+    }
+  }
 
   function formatCurrency(value: number): string {
     return new Intl.NumberFormat('en-US', {
@@ -153,6 +224,32 @@
     </div>
   </div>
 
+  <!-- Gang Bank Section -->
+  <div class="bank-section" in:fly={{ y: 20, duration: 250, delay: 220 }}>
+    <div class="bank-card">
+      <div class="bank-header">
+        <div class="bank-icon">
+          <BankIcon />
+        </div>
+        <div class="bank-info">
+          <div class="bank-label">{t('dashboard.gang_bank','Gang Bank')}</div>
+          <div class="bank-balance">{formatCurrency(gangBank)}</div>
+          <div class="bank-subtext">{t('dashboard.available_funds','Available funds for gang activities')}</div>
+        </div>
+      </div>
+      <div class="bank-actions">
+        <button class="bank-btn deposit" on:click={() => openBankModal('deposit')}>
+          <ArrowDownIcon />
+          <span>{t('dashboard.deposit','Deposit')}</span>
+        </button>
+        <button class="bank-btn withdraw" on:click={() => openBankModal('withdraw')}>
+          <ArrowUpIcon />
+          <span>{t('dashboard.withdraw','Withdraw')}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Chart Cards Section -->
   <div class="charts-section">
     <!-- Turf Wins with Full Width Graph -->
@@ -242,6 +339,78 @@
     </div>
   </div>
 </div>
+
+<!-- Bank Transaction Modal -->
+{#if showBankModal}
+  <div class="modal-overlay" on:click={closeBankModal} on:keydown={(e) => e.key === 'Escape' && closeBankModal()} transition:fade={{ duration: 150 }}>
+    <div class="modal-content" on:click|stopPropagation transition:scale={{ start: 0.9, duration: 200 }}>
+      <div class="modal-header">
+        <div class="modal-icon" class:deposit={bankAction === 'deposit'} class:withdraw={bankAction === 'withdraw'}>
+          {#if bankAction === 'deposit'}
+            <ArrowDownIcon />
+          {:else}
+            <ArrowUpIcon />
+          {/if}
+        </div>
+        <h3>{bankAction === 'deposit' ? t('dashboard.deposit_funds','Deposit Funds') : t('dashboard.withdraw_funds','Withdraw Funds')}</h3>
+      </div>
+      
+      <div class="modal-body">
+        <div class="current-balance">
+          <span class="balance-label">{t('dashboard.current_balance','Current Gang Balance')}</span>
+          <span class="balance-value">{formatCurrency(gangBank)}</span>
+        </div>
+        
+        <div class="input-group">
+          <label for="bank-amount">{t('dashboard.amount','Amount')}</label>
+          <div class="input-wrapper">
+            <span class="currency-prefix">$</span>
+            <input 
+              id="bank-amount"
+              type="number" 
+              bind:value={bankAmount} 
+              placeholder="0"
+              min="1"
+              disabled={bankLoading}
+            />
+          </div>
+          {#if bankError}
+            <div class="input-error">{bankError}</div>
+          {/if}
+        </div>
+
+        {#if bankAction === 'deposit'}
+          <div class="info-text">
+            {t('dashboard.deposit_info','Money will be taken from your pocket and added to the gang bank.')}
+          </div>
+        {:else}
+          <div class="info-text">
+            {t('dashboard.withdraw_info','Money will be taken from the gang bank and added to your pocket.')}
+          </div>
+        {/if}
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn-cancel" on:click={closeBankModal} disabled={bankLoading}>
+          {t('common.cancel','Cancel')}
+        </button>
+        <button 
+          class="btn-confirm" 
+          class:deposit={bankAction === 'deposit'} 
+          class:withdraw={bankAction === 'withdraw'}
+          on:click={handleBankTransaction}
+          disabled={bankLoading || !bankAmount}
+        >
+          {#if bankLoading}
+            {t('common.processing','Processing...')}
+          {:else}
+            {bankAction === 'deposit' ? t('dashboard.deposit','Deposit') : t('dashboard.withdraw','Withdraw')}
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .dashboard {
@@ -625,6 +794,323 @@
 
     .stat-card.wide {
       grid-column: span 1;
+    }
+  }
+
+  /* Bank Section Styles */
+  .bank-section {
+    margin-top: 8px;
+  }
+
+  .bank-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .bank-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .bank-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 28px;
+  }
+
+  .bank-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .bank-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .bank-balance {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+  }
+
+  .bank-subtext {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .bank-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .bank-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+  }
+
+  .bank-btn.deposit {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+  }
+
+  .bank-btn.deposit:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+  }
+
+  .bank-btn.withdraw {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+
+  .bank-btn.withdraw:hover {
+    background: var(--bg-sidebar);
+    border-color: var(--accent);
+  }
+
+  /* Modal Styles */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-content {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 420px;
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+
+  .modal-icon.deposit {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+  }
+
+  .modal-icon.withdraw {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+  }
+
+  .modal-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .modal-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .current-balance {
+    background: var(--bg-elevated);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .balance-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  .balance-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #10b981;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .input-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .input-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .input-wrapper:focus-within {
+    border-color: var(--accent);
+  }
+
+  .currency-prefix {
+    padding: 12px 16px;
+    background: var(--bg-dark);
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-right: 1px solid var(--border);
+  }
+
+  .input-wrapper input {
+    flex: 1;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 500;
+    outline: none;
+  }
+
+  .input-wrapper input::placeholder {
+    color: var(--text-secondary);
+  }
+
+  .input-error {
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .info-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    padding: 12px;
+    background: var(--bg-elevated);
+    border-radius: 8px;
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-dark);
+  }
+
+  .btn-cancel, .btn-confirm {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+  }
+
+  .btn-cancel {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+  }
+
+  .btn-cancel:hover:not(:disabled) {
+    background: var(--bg-panel);
+  }
+
+  .btn-confirm.deposit {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+  }
+
+  .btn-confirm.deposit:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669, #047857);
+  }
+
+  .btn-confirm.withdraw {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+  }
+
+  .btn-confirm.withdraw:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d97706, #b45309);
+  }
+
+  .btn-confirm:disabled, .btn-cancel:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 600px) {
+    .bank-card {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .bank-header {
+      flex-direction: column;
+    }
+
+    .bank-actions {
+      width: 100%;
+    }
+
+    .bank-btn {
+      flex: 1;
+      justify-content: center;
     }
   }
 </style>

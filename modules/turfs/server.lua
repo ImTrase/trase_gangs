@@ -98,10 +98,15 @@ function Turfs:EndTurf()
 		local Handler = exports['trase_gangs']:GetHandler()
 		if Handler then
 			Handler:UpdateGangStats(winnerGangId, 'turf_wins', 1)
+            
+            local repAmount = Config.Handler.ReputationRewards.TurfWin or 100
+            Handler:AddReputation(winnerGangId, repAmount, 'turf_win')
+
 			for gid, _ in pairs(self.turfData.gangs) do
 				if gid ~= winnerGangId then
 					Handler:UpdateGangStats(gid, 'turf_losses', 1)
 				end
+                Handler:RefreshGang(gid)
 			end
 		end
 

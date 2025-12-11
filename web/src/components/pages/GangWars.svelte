@@ -137,6 +137,25 @@
         wager
       });
 
+      // Check for errors
+      if (response === false || response?.success === false) {
+        const errorReason = response?.error || response?.result || 'unknown';
+        if (errorReason === 'insufficient_funds') {
+          fetchNui('trase_gangs:notify', {
+            title: 'Insufficient Funds',
+            description: `Your gang doesn't have enough money in the bank for the $${wager.toLocaleString()} wager`,
+            type: 'error'
+          });
+        } else {
+          fetchNui('trase_gangs:notify', {
+            title: 'Error',
+            description: errorReason,
+            type: 'error'
+          });
+        }
+        return;
+      }
+
       // Add to outgoing requests if response contains the request data
       if (response?.request) {
         outgoingRequests = [...outgoingRequests, response.request];
@@ -152,17 +171,47 @@
       closeCreateModal();
     } catch (e) {
       console.error('Failed to send gang war invite:', e);
-      closeCreateModal();
+      fetchNui('trase_gangs:notify', {
+        title: 'Error',
+        description: 'Failed to send gang war invite',
+        type: 'error'
+      });
     }
   }
 
   async function acceptGangWarRequest(request: GangWarRequest) {
     try {
-      await fetchNui('acceptGangWarRequest', { requestId: request.id });
-      incomingRequests = incomingRequests.filter(r => r.id !== request.id);
+      const response = await fetchNui('acceptGangWarRequest', { requestId: request.id });
+      if (response?.success) {
+        incomingRequests = incomingRequests.filter(r => r.id !== request.id);
+        fetchNui('trase_gangs:notify', {
+          title: 'Gang War Started',
+          description: 'The gang war has begun!',
+          type: 'success'
+        });
+      } else {
+        // Handle specific errors
+        if (response?.result === 'insufficient_funds') {
+          fetchNui('trase_gangs:notify', {
+            title: 'Insufficient Funds',
+            description: `Your gang doesn't have enough money in the bank for the $${request.wager.toLocaleString()} wager`,
+            type: 'error'
+          });
+        } else {
+          fetchNui('trase_gangs:notify', {
+            title: 'Error',
+            description: response?.result || 'Failed to accept gang war request',
+            type: 'error'
+          });
+        }
+      }
     } catch (e) {
       console.error('Failed to accept gang war request:', e);
-      incomingRequests = incomingRequests.filter(r => r.id !== request.id);
+      fetchNui('trase_gangs:notify', {
+        title: 'Error',
+        description: 'Failed to accept gang war request',
+        type: 'error'
+      });
     }
   }
 

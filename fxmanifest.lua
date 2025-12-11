@@ -4,7 +4,7 @@ lua54 'yes'
 
 author 'Trase'
 description 'Advanced gang system for FiveM'
-version '1.0.1'
+version '1.0.4'
 
 shared_scripts {
     '@ox_lib/init.lua',

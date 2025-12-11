@@ -101,11 +101,27 @@
         stats: data.stats || {},
         isOwner: data.isOwner || false,
         hasManagePermission: data.hasManagePermission || false,
-        playerIdentifier: data.playerIdentifier || null
+        playerIdentifier: data.playerIdentifier
       };
-      console.log('[Dashboard] Gang data stored:', gangData);
     }
   });
+
+  useNuiEvent("updateGangData", (data: any) => {
+    console.log('[Dashboard] Received gang update:', data);
+    if (data && gangData.gang) {
+        gangData.gang = { ...gangData.gang, ...data };
+        if (data.stats) gangData.stats = data.stats;
+        if (data.ranks) gangData.ranks = data.ranks;
+        // Trigger reactivity
+        gangData = gangData;
+    }
+  });
+
+  function close() {
+    open = false;
+    testDriveMode = false;
+    fetchNui("dashboard:closeUI");
+  }
 
   useNuiEvent("dealership:openTestDrive", (data: any) => {
     open = false;

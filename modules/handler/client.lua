@@ -28,6 +28,10 @@ function Handler:Init()
         if Config.Debug then
             DebugPrint('[Handler Client] Gang data updated')
         end
+        SendNUIMessage({
+            action = 'updateGangData',
+            data = gangData
+        })
     end)
     
     RegisterNetEvent('trase_gangs:client:gangRemoved', function()
@@ -661,9 +665,14 @@ end)
 
 RegisterNUICallback('sendGangWarInvite', function(data, cb)
     DebugPrint('[Client] sendGangWarInvite callback with gangId:', data.gangId)
-    local response = lib.callback.await('trase_gangs:server:sendGangWarInvite', false, data)
-    DebugPrint('[Client] sendGangWarInvite response:', json.encode(response))
-    cb(response)
+    local success, result = lib.callback.await('trase_gangs:server:sendGangWarInvite', false, data)
+    DebugPrint('[Client] sendGangWarInvite response - success:', success, 'result:', type(result) == 'table' and json.encode(result) or tostring(result))
+    -- Handle both table response (success case) and two-value response (error case)
+    if type(success) == 'table' then
+        cb(success)  -- Server returned a table directly
+    else
+        cb({ success = success, result = result })
+    end
 end)
 
 RegisterNUICallback('acceptGangWarRequest', function(data, cb)
@@ -685,6 +694,17 @@ RegisterNUICallback('cancelGangWarInvite', function(data, cb)
     local success, result = lib.callback.await('trase_gangs:server:cancelGangWarInvite', false, data)
     DebugPrint('[Client] cancelGangWarInvite response - success:', success, 'result:', result)
     cb({ success = success, result = result })
+end)
+
+RegisterNUICallback('gangBankTransaction', function(data, cb)
+    DebugPrint('[Client] gangBankTransaction callback - action:', data.action, 'amount:', data.amount)
+    local success, result = lib.callback.await('trase_gangs:server:gangBankTransaction', false, data.action, data.amount)
+    DebugPrint('[Client] gangBankTransaction response - success:', success, 'result:', result)
+    if success then
+        cb({ success = true })
+    else
+        cb({ success = false, error = result or 'Transaction failed' })
+    end
 end)
 
 function Handler:StartStashPlacement(gangId)
